@@ -1,2 +1,2 @@
 # Gem
-webgl gem shader
+Webgl Diamond Shader

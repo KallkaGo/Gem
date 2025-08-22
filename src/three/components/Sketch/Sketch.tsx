@@ -1,11 +1,18 @@
-import { OrbitControls } from '@react-three/drei'
+import { OrbitControls, useCubeTexture } from '@react-three/drei'
+import { useThree } from '@react-three/fiber'
 import { useInteractStore, useLoadedStore } from '@utils/Store'
 import { useEffect } from 'react'
+import RES from '../RES'
+import Gem from './items/Gem'
 
 function Sketch() {
+  const envTex = useCubeTexture(RES.textures.cubeEnvMap, { path: '' })
   const controlDom = useInteractStore(state => state.controlDom)
 
+  const scene = useThree(state => state.scene)
+
   useEffect(() => {
+    scene.background = envTex
     useLoadedStore.setState({ ready: true })
   }, [])
 
@@ -13,10 +20,7 @@ function Sketch() {
     <>
       <OrbitControls domElement={controlDom} />
       <color attach="background" args={['black']} />
-      <mesh>
-        <boxGeometry args={[1, 1, 1]} />
-        <meshBasicMaterial color="hotpink" />
-      </mesh>
+      <Gem />
     </>
   )
 }

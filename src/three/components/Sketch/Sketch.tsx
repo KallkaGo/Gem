@@ -7,6 +7,7 @@ import Gem from './items/Gem'
 
 function Sketch() {
   const envTex = useCubeTexture(RES.textures.cubeEnvMap, { path: '' })
+  
   const controlDom = useInteractStore(state => state.controlDom)
 
   const scene = useThree(state => state.scene)

@@ -1,6 +1,6 @@
 import type { ObjectMap } from '@react-three/fiber'
 import type { GLTF } from 'three-stdlib'
-import { MathUtils, type Mesh, type Object3D, Vector3 } from 'three'
+import { type Mesh, type Object3D, Vector3 } from 'three'
 
 // 打印扁平模型的所有部分
 function printModel(modelParts: Object3D[], modelName = 'modelParts') {
@@ -45,7 +45,8 @@ function packPlaneIntoColor(position: Vector3, normal: Vector3, inScale: number)
 
   // 计算 alpha 值并确保在 [0, 1] 范围
   const dotProduct = position.dot(normal)
-  colorWithAlpha[3] = MathUtils.clamp(dotProduct / inScale, 0, 1) // Alpha
+  // colorWithAlpha[3] = MathUtils.clamp(dotProduct / inScale, 0, 1) // Alpha
+  colorWithAlpha[3] = 1 // Alpha
 
   for (let i = 0; i < colorWithAlpha.length; i++) {
     colorWithAlpha[i] = Math.round(colorWithAlpha[i] * 100) / 100

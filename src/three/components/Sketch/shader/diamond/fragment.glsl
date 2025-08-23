@@ -1,4 +1,4 @@
-#define MAX_REFLECTION 10
+#define MAX_REFLECTION 3
 
 varying vec2 vUv;
 varying vec3 vCameraLocalPos;

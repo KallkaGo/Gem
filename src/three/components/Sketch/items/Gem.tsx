@@ -32,7 +32,7 @@ function Gem() {
     uBrightness: new Uniform(1.2),
     uPower: new Uniform(1),
     uDispersionIntensity: new Uniform(1),
-    uLighttransmission: new Uniform(0.5),
+    uLighttransmission: new Uniform(0),
     uEnvMap: new Uniform(envTex),
     uTotalInternalReflection: new Uniform(2),
     uBaseReflection: new Uniform(0.5),
@@ -72,15 +72,34 @@ function Gem() {
 
         const tmpPlanes = new Set<string>()
 
+        const averageNormalHash = new Map()
+
         for (let i = 0; i < faceCount; i++) {
           const index = i * stride
           const vertexIndex = indexData[index]
           const primaryPosition = new Vector3(verticesData[vertexIndex], verticesData[vertexIndex + 1], verticesData[vertexIndex + 2])
           const normalPosition = new Vector3(normalData[vertexIndex], normalData[vertexIndex + 1], normalData[vertexIndex + 2])
-          const packedPlane = packPlaneIntoColor(primaryPosition, normalPosition, scale)
+          const key = `${primaryPosition.x},${primaryPosition.y},${primaryPosition.z}`
+
+          // 计算平滑法线
+          if (!averageNormalHash.has(key)) {
+            averageNormalHash.set(key, normalPosition)
+          }
+          else {
+            const avgNorm = averageNormalHash.get(key)
+            avgNorm.add(normalPosition).normalize()
+            averageNormalHash.set(key, avgNorm)
+          }
+          // const packedPlane = packPlaneIntoColor(primaryPosition, normalPosition, scale)
+          // const colorString = `${packedPlane[0]},${packedPlane[1]},${packedPlane[2]},${packedPlane[3]}`
+          // tmpPlanes.add(colorString)
+        }
+
+        averageNormalHash.forEach((value, key) => {
+          const packedPlane = packPlaneIntoColor(value, scale)
           const colorString = `${packedPlane[0]},${packedPlane[1]},${packedPlane[2]},${packedPlane[3]}`
           tmpPlanes.add(colorString)
-        }
+        })
 
         const planeCount = tmpPlanes.size
 
@@ -122,6 +141,10 @@ function Gem() {
         uniforms.uSize.value.set(texSize, texSize)
 
         mesh.material = diamondMaterial
+
+        // clean
+        averageNormalHash.clear()
+        tmpPlanes.clear()
       }
     })
   }, [])

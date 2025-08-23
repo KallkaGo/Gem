@@ -51,7 +51,7 @@ void main() {
 
   CollideRayWithPlane(pos, 0., localRay, plane, 1.0 / tmpR, reflectionRate, reflectionRate2, reflectionRay, refractionRay, PlaneNull);
 
-  vec4 refractionColor = GetColorByRay(pos, refractionRay, tmpR, 3, vec4(1.), uLighttransmission);
+  vec4 refractionColor = GetColorByRay(pos, refractionRay, tmpR, MAX_REFLECTION, vec4(1.), uLighttransmission);
   refractionColor.w = 1.;
 
   vec4 test = texture2D(uShapeTexture, vUv);

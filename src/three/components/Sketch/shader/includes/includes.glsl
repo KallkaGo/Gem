@@ -93,21 +93,21 @@ void CollideRayWithPlane(
 ) {
     // 计算平滑法线
     vec3 SmoothedNormal = normalize(TriangleNormal.xyz);
-    
+
     // 计算垂直分量
     vec3 rayVertical = dot(SmoothedNormal, rayNormalized) * SmoothedNormal;
-    
+
     // 计算反射向量
     reflection = rayNormalized - rayVertical * 2.0; 
 
     // 计算水平分量并得到折射分量
-    vec3 rayHorizontal = rayNormalized - rayVertical; 
+    vec3 rayHorizontal = rayNormalized - rayVertical;
     vec3 refractHorizontal = rayHorizontal * startSideRelativeRefraction;
     float horizontalElementSquared = dot(refractHorizontal, refractHorizontal); 
 
     // 计算全内反射边界
     float borderDot = 0.0;
-    if (startSideRelativeRefraction > 1.0) {
+    if(startSideRelativeRefraction > 1.0) {
         borderDot = sqrt(1.0 - 1.0 / (startSideRelativeRefraction * startSideRelativeRefraction));
     }
 
@@ -123,7 +123,7 @@ void CollideRayWithPlane(
     float fresnelNode5 = (uFresnelDispersionScale * fresnelEffect);
 
     // 检查全内反射
-    if (horizontalElementSquared >= uTotalInternalReflection) {
+    if(horizontalElementSquared >= uTotalInternalReflection) {
         HorizontalElementSquared = 0.0;
         reflectionRate = 1.0; // 完全反射
         reflectionRate2 = 1.0; // 完全反射
@@ -141,7 +141,7 @@ void CollideRayWithPlane(
     // reflectionRate2 = CalcReflectionRate(rayNormalized, SmoothedNormal, uBaseReflection * PassCount, borderDot); // 计算第二次反射率
 
     // 限制反射率的最大值以改善视觉效果
-    if (reflectionRate > 0.5) 
+    if(reflectionRate > 0.5)
         reflectionRate = 0.5; // 调整反射率上限
     // if (reflectionRate2 > 0.4) 
     //     reflectionRate2 = 0.4; // 调整第二次反射率上限
@@ -275,7 +275,7 @@ vec4 GetColorByRay(
         // vec3 _worldViewDir = worldSpaceViewDir(rayStart.xyz);
         // _worldViewDir = normalize(_worldViewDir);
 
-         vec3 _worldViewDir = normalize(worldSpaceViewDir(tmpRayStart));
+        vec3 _worldViewDir = normalize(worldSpaceViewDir(tmpRayStart));
 
         float fresnelNdotV5 = dot(tmpRayStart, _worldViewDir);
         float fresnelNode5 = (uFresnelDispersionScale * pow(1.0 - fresnelNdotV5, uFresnelDispersionPower));
@@ -286,20 +286,26 @@ vec4 GetColorByRay(
         float DispersionG = uDispersionG * uDispersion * fresnelNode5;
         float DispersionB = uDispersionB * uDispersion * fresnelNode5;
 
-        vec3 DispersionRay_r = mix(refractionRay, mix(rayEnd, refractionRay, 2.), DispersionR * PlaneNull);
+        vec3 rayMix = mix(rayEnd, refractionRay, 2.0);
+
+        vec3 DispersionRay_r = mix(refractionRay, rayMix, DispersionR * PlaneNull);
+        vec3 DispersionRay_g = mix(refractionRay, rayMix, DispersionG * PlaneNull);
+        vec3 DispersionRay_b = mix(refractionRay, rayMix, DispersionB * PlaneNull);
+
+        // vec3 DispersionRay_r = mix(refractionRay, mix(rayEnd, refractionRay, 2.), DispersionR * PlaneNull);
 
         //    PlaneNull = lerp(PlaneNull, 1, 0.2);
 
-        vec3 DispersionRay_g = mix(refractionRay, mix(rayEnd, refractionRay, 2.), DispersionG * PlaneNull);
+        // vec3 DispersionRay_g = mix(refractionRay, mix(rayEnd, refractionRay, 2.), DispersionG * PlaneNull);
 
         //   PlaneNull = lerp(PlaneNull, 1, 0.2);
-        vec3 DispersionRay_b = mix(refractionRay, mix(rayEnd, refractionRay, 2.), DispersionB * PlaneNull);
+        // vec3 DispersionRay_b = mix(refractionRay, mix(rayEnd, refractionRay, 2.), DispersionB * PlaneNull);
 
         // float Depth_ = depthColors[i];
 
         // Depth_ = Remap(Depth_, 0.997, 0.999, 1, 0);
 
-        refractionColors3[i] = SampleEnvironment(refractionRay);
+        // refractionColors3[i] = SampleEnvironment(refractionRay);
 
         refractionColors2[i] = vec4(1);
 
@@ -309,10 +315,12 @@ vec4 GetColorByRay(
 
         Color.rgb = mix(vec4(1), Color, uColorIntensity).rgb;
 
-        depthColors[i] = vec4(CalcColorCoefByDistance(hitTime, mix(Color, vec4(1), mix(0., (refractionColors3[i].r + refractionColors3[i].g +
-            refractionColors3[i].b) / 2., lighttransmission))), 1.);
+        // depthColors[i] = vec4(CalcColorCoefByDistance(hitTime, mix(Color, vec4(1), mix(0., (refractionColors3[i].r + refractionColors3[i].g +
+        //     refractionColors3[i].b) / 2., lighttransmission))), 1.);
 
-        refractionColors2[i] = clamp(mix(refractionColors3[i], refractionColors2[i], uDispersionIntensity), 0., 1.);
+        depthColors[i] = vec4(CalcColorCoefByDistance(hitTime, vec4(Color.rgb, 1.)), 1.);
+
+        // refractionColors2[i] = clamp(mix(refractionColors3[i], refractionColors2[i], uDispersionIntensity), 0., 1.);
 
         float CLR = refractionRay.x;
 
@@ -320,7 +328,7 @@ vec4 GetColorByRay(
             CLR = CLR * -1.0;
         }
 
-        refractionColors[i] = SampleEnvironment(refractionRay);
+        // refractionColors[i] = SampleEnvironment(refractionRay);
 
         if(i == loopCount - 1) {
             reflectionRates[i] = 0.0;

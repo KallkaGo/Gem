@@ -93,22 +93,22 @@ void CollideRayWithPlane(
 ) {
     // 计算平滑法线
     vec3 SmoothedNormal = normalize(TriangleNormal.xyz);
-
+    
     // 计算垂直分量
     vec3 rayVertical = dot(SmoothedNormal, rayNormalized) * SmoothedNormal;
 
     // 计算反射向量
     reflection = rayNormalized - rayVertical * 2.0; 
 
-    // 计算水平分量并得到折射分量
+    // 计算水平分量
     vec3 rayHorizontal = rayNormalized - rayVertical;
     vec3 refractHorizontal = rayHorizontal * startSideRelativeRefraction;
     float horizontalElementSquared = dot(refractHorizontal, refractHorizontal); 
 
     // 计算全内反射边界
     float borderDot = 0.0;
-    if(startSideRelativeRefraction > 1.0) {
-        borderDot = sqrt(1.0 - 1.0 / (startSideRelativeRefraction * startSideRelativeRefraction));
+    if (startSideRelativeRefraction > 1.0) {
+        borderDot = sqrt(1.0 - (1.0 / (startSideRelativeRefraction * startSideRelativeRefraction)));
     }
 
     HorizontalElementSquared = horizontalElementSquared; 
@@ -123,25 +123,31 @@ void CollideRayWithPlane(
     float fresnelNode5 = (uFresnelDispersionScale * fresnelEffect);
 
     // 检查全内反射
-    if(horizontalElementSquared >= uTotalInternalReflection) {
+    if (horizontalElementSquared >= uTotalInternalReflection) {
         HorizontalElementSquared = 0.0;
         reflectionRate = 1.0; // 完全反射
         reflectionRate2 = 1.0; // 完全反射
-        refraction = SmoothedNormal; // 直接使用平滑法线
+        refraction = SmoothedNormal; // 直接使用平滑法线作为直接替代
         return;
     }
 
     // 计算折射向量
     float verticalSizeSquared = 1.0 - horizontalElementSquared;
-    vec3 refractVertical = rayVertical * sqrt(verticalSizeSquared / dot(rayVertical, rayVertical));
-    refraction = refractHorizontal + refractVertical;
+
+    // 使用 refract 函数来计算折射向量
+    if (verticalSizeSquared >= 0.0) {
+        vec3 refractVertical = rayVertical * sqrt(verticalSizeSquared / dot(rayVertical, rayVertical));
+        refraction = refractHorizontal + refractVertical;
+    } else {
+        refraction = reflect(rayNormalized, SmoothedNormal); // 全内反射的情况下回退到反射
+    }
 
     // 计算反射率
     reflectionRate = CalcReflectionRate(rayNormalized, SmoothedNormal, uBaseReflection * PassCount, borderDot);
-    // reflectionRate2 = CalcReflectionRate(rayNormalized, SmoothedNormal, uBaseReflection * PassCount, borderDot); // 计算第二次反射率
+    // reflectionRate2 = CalcReflectionRate(rayNormalized, SmoothedNormal, uBaseReflection * PassCount, borderDot); // 如果需要，计算第二次反射率
 
     // 限制反射率的最大值以改善视觉效果
-    if(reflectionRate > 0.5)
+    if (reflectionRate > 0.5)
         reflectionRate = 0.5; // 调整反射率上限
     // if (reflectionRate2 > 0.4) 
     //     reflectionRate2 = 0.4; // 调整第二次反射率上限
@@ -164,7 +170,7 @@ vec4 GetUnpackedPlaneByIndex(int index) {
 
     vec3 normal = packedPlane.xyz * 2.0 - vec3(1, 1, 1);
 
-    return vec4(normal, packedPlane.w * uScale);
+    return vec4(normal, packedPlane.w * uScale * uScaleIntensity);
 }
 
 // plane - normal.xyz и normal.w - distance

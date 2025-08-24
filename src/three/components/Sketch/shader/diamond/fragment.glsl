@@ -24,6 +24,7 @@ uniform float uColorIntensity;
 uniform float uDispersionIntensity;
 uniform float uLighttransmission;
 uniform float uMipMapLevel;
+uniform float uScaleIntensity;
 
 uniform vec2 uSize;
 uniform sampler2D uShapeTexture;

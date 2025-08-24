@@ -20,11 +20,12 @@ function Gem() {
     uPlaneCount: new Uniform(0),
     uSize: new Uniform(new Vector2(1, 1)),
     uScale: new Uniform(0),
+    uScaleIntensity: new Uniform(1),
     uRefractiveIndex: new Uniform(1.5),
     uDispersionR: new Uniform(0.68),
     uDispersionG: new Uniform(0.4),
     uDispersionB: new Uniform(0.146),
-    uDispersion: new Uniform(0.1),
+    uDispersion: new Uniform(0),
     uFresnelDispersionScale: new Uniform(1),
     uFresnelDispersionPower: new Uniform(1),
     uColorIntensity: new Uniform(1.7),
@@ -36,7 +37,7 @@ function Gem() {
     uEnvMap: new Uniform(envTex),
     uTotalInternalReflection: new Uniform(2),
     uBaseReflection: new Uniform(0.5),
-    uMipMapLevel: new Uniform(3),
+    uMipMapLevel: new Uniform(6),
   }), [])
 
   useEffect(() => {

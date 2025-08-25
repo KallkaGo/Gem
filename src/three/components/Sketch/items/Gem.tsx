@@ -4,6 +4,7 @@ import { calculateBoundingInfo, packPlaneIntoColor } from '@utils/misc'
 import { useControls } from 'leva'
 import { useEffect, useMemo } from 'react'
 import { Color, DataTexture, LinearMipmapLinearFilter, ShaderMaterial, Texture, Uniform, Vector2, Vector3 } from 'three'
+import { BufferGeometryUtils } from 'three/examples/jsm/Addons.js'
 import RES from '../../RES'
 import diamondFragmentShader from '../shader/diamond/fragment.glsl'
 import diamondVertexShader from '../shader/diamond/vertex.glsl'
@@ -106,8 +107,9 @@ function Gem() {
     gltf.scene.traverse((child) => {
       if ((child as Mesh).isMesh) {
         const mesh = child as Mesh
-        const verticesData = new Float32Array(mesh.geometry.attributes.position.array)
-        const normalData = new Float32Array(mesh.geometry.attributes.normal.array)
+        const geometry = BufferGeometryUtils.mergeVertices(mesh.geometry)
+        const verticesData = new Float32Array(geometry.attributes.position.array)
+        const normalData = new Float32Array(geometry.attributes.normal.array)
         // const indexData = mesh.geometry.index?.array as Uint16Array ?? []
         const { minPos, maxPos } = calculateBoundingInfo(verticesData)
         const center = new Vector3((minPos.x + maxPos.x) / 2, (minPos.y + maxPos.y) / 2, (minPos.z + maxPos.z) / 2)
@@ -185,6 +187,8 @@ function Gem() {
         const planeCount = tmpPlanes.size
 
         const texSize = 2 ** Math.ceil(Math.log2(Math.sqrt(planeCount)))
+
+        console.log('planeCount', planeCount, 'texSize', texSize)
 
         const planeColor = new Uint8Array(texSize * texSize * 4)
 

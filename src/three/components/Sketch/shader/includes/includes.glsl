@@ -101,36 +101,75 @@ vec4 GetUnpackedPlaneByIndex(int index) {
     return vec4(normal, packedPlane.w * uScale * uScaleIntensity);
 }
 
-// plane - normal.xyz и normal.w - distance
+// // plane - normal.xyz и normal.w - distance
+// float CheckCollideRayWithPlane(vec3 rayStart, vec3 rayNormalized, vec4 normalTriangle) {
+//     float dp = dot(rayNormalized, normalTriangle.xyz);
+
+//     if(dp < 0.) {
+//         return -1.;
+//     } else {
+//         float distanceNormalized = normalTriangle.w - dot(rayStart.xyz, normalTriangle.xyz);
+
+//         if(distanceNormalized < 0.) {
+//             return -1.;
+//         }
+
+//         return distanceNormalized / dp;
+//     }
+
+//     return -1.;
+// }
+
+// void CheckCollideRayWithAllPlanes(vec3 rayStart, vec3 rayDirection, out vec4 hitPlane, out float hitTime) {
+//     hitTime = 1000000.0;
+//     hitPlane = vec4(1, 0, 0, 1);
+//     //[unroll(20)]
+//     for(int i = 0; i < uPlaneCount; ++i) {
+//         vec4 plane = GetUnpackedPlaneByIndex(i);
+//         float tmpTime = CheckCollideRayWithPlane(rayStart, rayDirection, plane);
+
+//         if(tmpTime >= -0.001 && tmpTime < hitTime) {
+//             hitTime = tmpTime;
+//             hitPlane = plane;
+//         }
+//     }
+// }
+
+// plane - normal.xyz and normal.w - distance
 float CheckCollideRayWithPlane(vec3 rayStart, vec3 rayNormalized, vec4 normalTriangle) {
     float dp = dot(rayNormalized, normalTriangle.xyz);
 
-    if(dp < 0.) {
-        return -1.;
-    } else {
-        float distanceNormalized = normalTriangle.w - dot(rayStart.xyz, normalTriangle.xyz);
-
-        if(distanceNormalized < 0.) {
-            return -1.;
-        }
-
-        return distanceNormalized / dp;
+    // 如果点乘为负，表示射线方向与法线相反，直接返回 -1.0
+    if (dp < 0.0) {
+        return -1.0;
     }
 
-    return -1.;
+    float distanceToPlane = normalTriangle.w - dot(rayStart, normalTriangle.xyz);
+    // 如果到平面的距离小于0，返回 -1.0
+    if (distanceToPlane < 0.0) {
+        return -1.0;
+    }
+
+    return distanceToPlane / dp;
 }
 
 void CheckCollideRayWithAllPlanes(vec3 rayStart, vec3 rayDirection, out vec4 hitPlane, out float hitTime) {
     hitTime = 1000000.0;
     hitPlane = vec4(1, 0, 0, 1);
-    //[unroll(20)]
-    for(int i = 0; i < uPlaneCount; ++i) {
+    
+    for (int i = 0; i < uPlaneCount; ++i) {
         vec4 plane = GetUnpackedPlaneByIndex(i);
         float tmpTime = CheckCollideRayWithPlane(rayStart, rayDirection, plane);
 
-        if(tmpTime >= -0.001 && tmpTime < hitTime) {
-            hitTime = tmpTime;
-            hitPlane = plane;
+        // 检查 tmpTime 是否有效且小于当前最小值
+        if (tmpTime >= 0.0 && tmpTime < hitTime) {
+            hitTime = tmpTime;  // 更新最小交点
+            hitPlane = plane;   // 更新对应平面
+        }
+        
+        // 提前退出可以加速找交点的速度
+        if (hitTime < 0.01) { // 假设你只关心正交点
+            break; // 找到有效平面后，提前返回
         }
     }
 }
@@ -175,7 +214,7 @@ vec4 GetColorByRay(
 
     //  [unroll(10)]
     for(int i = 0; i < loopCount; ++i) {
-        float hitTime = 1000000.0;
+        float hitTime = 1e6;
         vec4 hitPlane = vec4(1, 0, 0, 1);
         CheckCollideRayWithAllPlanes(tmpRayStart, tmpRayDirection, hitPlane, hitTime);
 
@@ -221,40 +260,23 @@ vec4 GetColorByRay(
         float DispersionB = uDispersionB * uDispersion * fresnelNode5;
 
         vec3 rayMix = mix(rayEnd, refractionRay, 2.0);
-
         vec3 DispersionRay_r = mix(refractionRay, rayMix, DispersionR * PlaneNull);
         vec3 DispersionRay_g = mix(refractionRay, rayMix, DispersionG * PlaneNull);
         vec3 DispersionRay_b = mix(refractionRay, rayMix, DispersionB * PlaneNull);
 
-        // vec3 DispersionRay_r = mix(refractionRay, mix(rayEnd, refractionRay, 2.), DispersionR * PlaneNull);
-
-        //    PlaneNull = lerp(PlaneNull, 1, 0.2);
-
-        // vec3 DispersionRay_g = mix(refractionRay, mix(rayEnd, refractionRay, 2.), DispersionG * PlaneNull);
-
-        //   PlaneNull = lerp(PlaneNull, 1, 0.2);
-        // vec3 DispersionRay_b = mix(refractionRay, mix(rayEnd, refractionRay, 2.), DispersionB * PlaneNull);
-
-        // float Depth_ = depthColors[i];
-
-        // Depth_ = Remap(Depth_, 0.997, 0.999, 1, 0);
-
         refractionColors3[i] = SampleEnvironment(refractionRay);
 
-        refractionColors2[i] = vec4(1);
-
-        refractionColors2[i].r = SampleEnvironment(DispersionRay_r).r;
-        refractionColors2[i].g = SampleEnvironment(DispersionRay_g).g;
-        refractionColors2[i].b = SampleEnvironment(DispersionRay_b).b;
+        refractionColors2[i] = vec4(
+            SampleEnvironment(DispersionRay_r).r,
+            SampleEnvironment(DispersionRay_g).g,
+            SampleEnvironment(DispersionRay_b).b,
+            1.
+        );
 
         Color.rgb = mix(vec4(1), Color, uColorIntensity).rgb;
 
         depthColors[i] = vec4(CalcColorCoefByDistance(hitTime, mix(Color, vec4(1), mix(0., (refractionColors3[i].r + refractionColors3[i].g +
             refractionColors3[i].b) / 2., lighttransmission))), 1.);
-
-        // depthColors[i] = vec4(CalcColorCoefByDistance(hitTime, vec4(Color.rgb, 1.)), 1.);
-
-        // refractionColors2[i] = clamp(mix(refractionColors3[i], refractionColors2[i], uDispersionIntensity), 0., 1.);
 
         float CLR = refractionRay.x;
 

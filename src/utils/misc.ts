@@ -1,6 +1,6 @@
 import type { ObjectMap } from '@react-three/fiber'
 import type { GLTF } from 'three-stdlib'
-import { type Mesh, type Object3D, Vector3 } from 'three'
+import { MathUtils, type Mesh, type Object3D, Vector3 } from 'three'
 
 // 打印扁平模型的所有部分
 function printModel(modelParts: Object3D[], modelName = 'modelParts') {
@@ -35,7 +35,28 @@ function calculateBoundingInfo(verticesData: Float32Array) {
   return { minPos, maxPos }
 }
 
-// function packPlaneIntoColor(position: Vector3, normal: Vector3, inScale: number) {
+function packPlaneIntoColor(position: Vector3, normal: Vector3, inScale: number) {
+  // 创建包含 RGB 和 alpha 的数组
+  const colorWithAlpha = []
+  // 计算颜色的 RGB 值
+  colorWithAlpha[0] = (normal.x + 1) * 0.5 // Red
+  colorWithAlpha[1] = (normal.y + 1) * 0.5 // Green
+  colorWithAlpha[2] = (normal.z + 1) * 0.5 // Blue
+
+  // 计算 alpha 值并确保在 [0, 1] 范围
+  const dotProduct = position.dot(normal)
+  colorWithAlpha[3] = MathUtils.clamp(dotProduct / inScale, 0, 1) // Alpha
+  // colorWithAlpha[3] = 1 // Alpha
+
+  for (let i = 0; i < colorWithAlpha.length; i++) {
+    colorWithAlpha[i] = Math.round(colorWithAlpha[i] * 100) / 100
+    // colorWithAlpha[i] = Math.round(colorWithAlpha[i] * 10) / 10
+  }
+
+  return colorWithAlpha // 返回带有 Alpha 值的颜色数组
+}
+
+// function packPlaneIntoColor(normal: Vector3, inScale: number) {
 //   // 创建包含 RGB 和 alpha 的数组
 //   const colorWithAlpha = []
 //   // 计算颜色的 RGB 值
@@ -44,7 +65,7 @@ function calculateBoundingInfo(verticesData: Float32Array) {
 //   colorWithAlpha[2] = (normal.z + 1) * 0.5 // Blue
 
 //   // 计算 alpha 值并确保在 [0, 1] 范围
-//   const dotProduct = position.dot(normal)
+//   // const dotProduct = position.dot(normal)
 //   // colorWithAlpha[3] = MathUtils.clamp(dotProduct / inScale, 0, 1) // Alpha
 //   colorWithAlpha[3] = 1 // Alpha
 
@@ -55,27 +76,6 @@ function calculateBoundingInfo(verticesData: Float32Array) {
 
 //   return colorWithAlpha // 返回带有 Alpha 值的颜色数组
 // }
-
-function packPlaneIntoColor(normal: Vector3, inScale: number) {
-  // 创建包含 RGB 和 alpha 的数组
-  const colorWithAlpha = []
-  // 计算颜色的 RGB 值
-  colorWithAlpha[0] = (normal.x + 1) * 0.5 // Red
-  colorWithAlpha[1] = (normal.y + 1) * 0.5 // Green
-  colorWithAlpha[2] = (normal.z + 1) * 0.5 // Blue
-
-  // 计算 alpha 值并确保在 [0, 1] 范围
-  // const dotProduct = position.dot(normal)
-  // colorWithAlpha[3] = MathUtils.clamp(dotProduct / inScale, 0, 1) // Alpha
-  colorWithAlpha[3] = 1 // Alpha
-
-  for (let i = 0; i < colorWithAlpha.length; i++) {
-    // colorWithAlpha[i] = Math.round(colorWithAlpha[i] * 100) / 100
-    colorWithAlpha[i] = Math.round(colorWithAlpha[i] * 10) / 10
-  }
-
-  return colorWithAlpha // 返回带有 Alpha 值的颜色数组
-}
 
 export {
   calculateBoundingInfo,

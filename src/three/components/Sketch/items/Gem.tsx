@@ -1,16 +1,17 @@
 import type { Mesh } from 'three'
 import { useCubeTexture, useGLTF } from '@react-three/drei'
 import { calculateBoundingInfo, packPlaneIntoColor } from '@utils/misc'
+import { useControls } from 'leva'
 import { useEffect, useMemo } from 'react'
-import { DataTexture, DoubleSide, LinearMipmapLinearFilter, ShaderMaterial, Texture, Uniform, Vector2, Vector3 } from 'three'
+import { Color, DataTexture, DoubleSide, LinearMipmapLinearFilter, ShaderMaterial, Texture, Uniform, Vector2, Vector3 } from 'three'
 import RES from '../../RES'
 import diamondFragmentShader from '../shader/diamond/fragment.glsl'
 import diamondVertexShader from '../shader/diamond/vertex.glsl'
 
 function Gem() {
-  const gltf = useGLTF(RES.models.diamond)
+  const gltf = useGLTF(RES.models.diamond2)
 
-  const envTex = useCubeTexture(RES.textures.cubeEnvMap, { path: '' })
+  const envTex = useCubeTexture(RES.textures.envMap, { path: '' })
   envTex.generateMipmaps = true
   envTex.minFilter = LinearMipmapLinearFilter
 
@@ -37,8 +38,60 @@ function Gem() {
     uEnvMap: new Uniform(envTex),
     uTotalInternalReflection: new Uniform(2),
     uBaseReflection: new Uniform(0.5),
-    uMipMapLevel: new Uniform(6),
+    uMipMapLevel: new Uniform(0),
+    uMaxReflection: new Uniform(3),
+    uColor: new Uniform(new Color('#ffffff')),
   }), [])
+
+  useControls('gem', {
+    Color: {
+      value: '#ffffff',
+      onChange: (value) => {
+        uniforms.uColor.value = new Color(value)
+      },
+    },
+    RefractiveIndex: {
+      value: uniforms.uRefractiveIndex.value,
+      min: 1,
+      max: 5,
+      onChange: (value) => {
+        uniforms.uRefractiveIndex.value = value
+      },
+    },
+    MaxReflection: {
+      value: uniforms.uMaxReflection.value,
+      min: 0,
+      max: 10,
+      step: 1,
+      onChange: (value) => {
+        uniforms.uMaxReflection.value = value
+      },
+    },
+    Lighttransmission: {
+      value: uniforms.uLighttransmission.value,
+      min: 0,
+      max: 1.5,
+      onChange: (value) => {
+        uniforms.uLighttransmission.value = value
+      },
+    },
+    ColorByDepth: {
+      value: uniforms.uColorByDepth.value,
+      min: 0,
+      max: 1,
+      onChange: (value) => {
+        uniforms.uColorByDepth.value = value
+      },
+    },
+    ColorIntensity: {
+      value: uniforms.uColorIntensity.value,
+      min: 0,
+      max: 3,
+      onChange: (value) => {
+        uniforms.uColorIntensity.value = value
+      },
+    },
+  })
 
   useEffect(() => {
     gltf.scene.traverse((child) => {
@@ -46,7 +99,7 @@ function Gem() {
         const mesh = child as Mesh
         const verticesData = new Float32Array(mesh.geometry.attributes.position.array)
         const normalData = new Float32Array(mesh.geometry.attributes.normal.array)
-        const indexData = mesh.geometry.index?.array as Uint16Array ?? []
+        // const indexData = mesh.geometry.index?.array as Uint16Array ?? []
         const { minPos, maxPos } = calculateBoundingInfo(verticesData)
         const center = new Vector3((minPos.x + maxPos.x) / 2, (minPos.y + maxPos.y) / 2, (minPos.z + maxPos.z) / 2)
 
@@ -67,40 +120,58 @@ function Gem() {
           scale = Math.max(length * 1.05, scale)
         }
 
-        const stride = 3
+        // const stride = 3
 
-        const faceCount = indexData.length / stride
+        // const faceCount = indexData.length / stride
 
         const tmpPlanes = new Set<string>()
 
         const averageNormalHash = new Map()
 
-        for (let i = 0; i < faceCount; i++) {
-          const index = i * stride
-          const vertexIndex = indexData[index]
-          const primaryPosition = new Vector3(verticesData[vertexIndex], verticesData[vertexIndex + 1], verticesData[vertexIndex + 2])
-          const normalPosition = new Vector3(normalData[vertexIndex], normalData[vertexIndex + 1], normalData[vertexIndex + 2])
-          const key = `${primaryPosition.x},${primaryPosition.y},${primaryPosition.z}`
+        // for (let i = 0; i < faceCount; i++) {
+        //   const index = i * stride
+        //   const vertexIndex = indexData[index]
+        //   const primaryPosition = new Vector3(verticesData[vertexIndex], verticesData[vertexIndex + 1], verticesData[vertexIndex + 2])
+        //   const normalPosition = new Vector3(normalData[vertexIndex], normalData[vertexIndex + 1], normalData[vertexIndex + 2])
+        //   const key = `${primaryPosition.x},${primaryPosition.y},${primaryPosition.z}`
 
+        //   // 计算平滑法线
+        //   if (!averageNormalHash.has(key)) {
+        //     averageNormalHash.set(key, normalPosition)
+        //   }
+        //   else {
+        //     const avgNorm = averageNormalHash.get(key)
+        //     avgNorm.add(normalPosition).normalize()
+        //     averageNormalHash.set(key, avgNorm)
+        //   }
+        //   // const packedPlane = packPlaneIntoColor(primaryPosition, normalPosition, scale)
+        //   // const colorString = `${packedPlane[0]},${packedPlane[1]},${packedPlane[2]},${packedPlane[3]}`
+        //   // tmpPlanes.add(colorString)
+        // }
+
+        for (let i = 0; i < verticesData.length; i += 3) {
+          const primaryPosition = new Vector3(verticesData[i], verticesData[i + 1], verticesData[i + 2])
+          const primaryNormal = new Vector3(normalData[i], normalData[i + 1], normalData[i + 2])
           // 计算平滑法线
-          if (!averageNormalHash.has(key)) {
-            averageNormalHash.set(key, normalPosition)
-          }
-          else {
-            const avgNorm = averageNormalHash.get(key)
-            avgNorm.add(normalPosition).normalize()
-            averageNormalHash.set(key, avgNorm)
-          }
-          // const packedPlane = packPlaneIntoColor(primaryPosition, normalPosition, scale)
-          // const colorString = `${packedPlane[0]},${packedPlane[1]},${packedPlane[2]},${packedPlane[3]}`
-          // tmpPlanes.add(colorString)
-        }
-
-        averageNormalHash.forEach((value, key) => {
-          const packedPlane = packPlaneIntoColor(value, scale)
+          // const key = `${primaryPosition.x},${primaryPosition.y},${primaryPosition.z}`
+          // if (!averageNormalHash.has(key)) {
+          //   averageNormalHash.set(key, primaryNormal)
+          // }
+          // else {
+          //   const avgNorm = averageNormalHash.get(key)
+          //   avgNorm.add(primaryNormal).normalize()
+          //   averageNormalHash.set(key, avgNorm)
+          // }
+          const packedPlane = packPlaneIntoColor(primaryPosition, primaryNormal, scale)
           const colorString = `${packedPlane[0]},${packedPlane[1]},${packedPlane[2]},${packedPlane[3]}`
           tmpPlanes.add(colorString)
-        })
+        }
+
+        // averageNormalHash.forEach((value, key) => {
+        //   const packedPlane = packPlaneIntoColor(value, scale)
+        //   const colorString = `${packedPlane[0]},${packedPlane[1]},${packedPlane[2]},${packedPlane[3]}`
+        //   tmpPlanes.add(colorString)
+        // })
 
         const planeCount = tmpPlanes.size
 

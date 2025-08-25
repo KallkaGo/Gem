@@ -1,5 +1,6 @@
 vec3 worldSpaceViewDir(vec3 pos) {
-    vec3 viewDir = cameraPosition.xyz - pos;
+    vec3 worldPos = (objectToWorldMatrix * vec4(pos, 1.)).xyz;
+    vec3 viewDir = cameraPosition.xyz - worldPos;
     return viewDir;
 }
 
@@ -11,6 +12,73 @@ float CalcReflectionRate(vec3 normal, vec3 ray, float baseReflection, float bord
     float normalizedDot = clamp((abs(dot(normal, ray)) - borderDot) / (1.0 - borderDot), 0.0, 1.0);
 
     return baseReflection + (1.0 - baseReflection) * pow(1.0 - normalizedDot, 5.);
+}
+
+void CollideRayWithPlane(
+    vec3 Pos,
+    float PassCount,
+    vec3 rayNormalized,
+    vec4 TriangleNormal,
+    float startSideRelativeRefraction,
+    out float reflectionRate,
+    out float reflectionRate2,
+    out vec3 reflection,
+    out vec3 refraction,
+    out float HorizontalElementSquared
+) {
+    // 计算垂直向量
+    vec3 rayVertical = dot(TriangleNormal.xyz, rayNormalized) * TriangleNormal.xyz;
+    reflection = rayNormalized - rayVertical * 2.0; // 计算反射向量
+
+    vec3 rayHorizontal = rayNormalized - rayVertical; // 计算水平分量
+    vec3 refractHorizontal = rayHorizontal * startSideRelativeRefraction; // 计算折射水平分量
+    float horizontalElementSquared = dot(refractHorizontal, refractHorizontal); // 水平分量的平方
+
+    // 计算全内反射边界
+    float borderDot = 0.0;
+    if(startSideRelativeRefraction > 1.0) {
+        borderDot = sqrt(1.0 - 1.0 / (startSideRelativeRefraction * startSideRelativeRefraction));
+    } else {
+        borderDot = 0.0;
+    }
+
+    HorizontalElementSquared = horizontalElementSquared / 3.0; // 计算水平元素的平方
+
+    // 计算视线方向并归一化
+    vec3 _worldViewDir = worldSpaceViewDir(Pos);
+    _worldViewDir = normalize(_worldViewDir);
+
+    // 计算 Fresnel 系数
+    float fresnelNdotV5 = dot(rayNormalized, _worldViewDir);
+    float fresnelEffect = pow(1.0 - fresnelNdotV5, uFresnelDispersionPower); // 调整 Fresnel 理论计算
+    float fresnelNode5 = (uFresnelDispersionScale * fresnelEffect);
+
+    // 检查全内反射
+    if(horizontalElementSquared >= uTotalInternalReflection) {
+        HorizontalElementSquared = 0.0;
+        reflectionRate = 1.0; // 完全反射
+        reflectionRate2 = 1.0;
+        refraction = TriangleNormal.xyz; // 直接使用法线
+        return;
+    }
+
+    // 计算折射向量
+    float verticalSizeSquared = 1.0 - horizontalElementSquared;
+    vec3 refractVertical = rayVertical * sqrt(verticalSizeSquared / dot(rayVertical, rayVertical));
+    refraction = refractHorizontal + refractVertical;
+    // refraction = refract(rayNormalized, TriangleNormal.xyz, startSideRelativeRefraction);
+
+    // 计算反射率
+    reflectionRate = CalcReflectionRate(rayNormalized, TriangleNormal.xyz, uBaseReflection * PassCount, borderDot);
+    // reflectionRate2 = CalcReflectionRate(rayNormalized, TriangleNormal.xyz, uBaseReflection * PassCount, borderDot);
+
+    //  reflectionRate2 = 0.;
+
+    // 限制反射率的最大值，以避免过于尖锐的反射
+    // if(reflectionRate > 0.4)
+    //     reflectionRate = 0.4;
+    // if(reflectionRate2 > 0.1)
+    //     reflectionRate2 = 0.1;
 }
 
 // void CollideRayWithPlane(
@@ -25,23 +93,27 @@ float CalcReflectionRate(vec3 normal, vec3 ray, float baseReflection, float bord
 //     out vec3 refraction,
 //     out float HorizontalElementSquared
 // ) {
-//     // 计算垂直向量
-//     vec3 rayVertical = dot(TriangleNormal.xyz, rayNormalized) * TriangleNormal.xyz;
-//     reflection = rayNormalized - rayVertical * 2.0; // 计算反射向量
+//     // 计算平滑法线
+//     vec3 SmoothedNormal = normalize(TriangleNormal.xyz);
+    
+//     // 计算垂直分量
+//     vec3 rayVertical = dot(SmoothedNormal, rayNormalized) * SmoothedNormal;
 
-//     vec3 rayHorizontal = rayNormalized - rayVertical; // 计算水平分量
-//     vec3 refractHorizontal = rayHorizontal * startSideRelativeRefraction; // 计算折射水平分量
-//     float horizontalElementSquared = dot(refractHorizontal, refractHorizontal); // 水平分量的平方
+//     // 计算反射向量
+//     reflection = rayNormalized - rayVertical * 2.0; 
+
+//     // 计算水平分量
+//     vec3 rayHorizontal = rayNormalized - rayVertical;
+//     vec3 refractHorizontal = rayHorizontal * startSideRelativeRefraction;
+//     float horizontalElementSquared = dot(refractHorizontal, refractHorizontal); 
 
 //     // 计算全内反射边界
 //     float borderDot = 0.0;
-//     if(startSideRelativeRefraction > 1.0) {
-//         borderDot = sqrt(1.0 - 1.0 / (startSideRelativeRefraction * startSideRelativeRefraction));
-//     } else {
-//         borderDot = 0.0;
+//     if (startSideRelativeRefraction > 1.0) {
+//         borderDot = sqrt(1.0 - (1.0 / (startSideRelativeRefraction * startSideRelativeRefraction)));
 //     }
 
-//     HorizontalElementSquared = horizontalElementSquared / 3.0; // 计算水平元素的平方
+//     HorizontalElementSquared = horizontalElementSquared; 
 
 //     // 计算视线方向并归一化
 //     vec3 _worldViewDir = worldSpaceViewDir(Pos);
@@ -49,109 +121,39 @@ float CalcReflectionRate(vec3 normal, vec3 ray, float baseReflection, float bord
 
 //     // 计算 Fresnel 系数
 //     float fresnelNdotV5 = dot(rayNormalized, _worldViewDir);
-//     float fresnelEffect = pow(1.0 - fresnelNdotV5, uFresnelDispersionPower); // 调整 Fresnel 理论计算
+//     float fresnelEffect = pow(1.0 - fresnelNdotV5, 3.0); // 使用平滑的 Fresnel 计算
 //     float fresnelNode5 = (uFresnelDispersionScale * fresnelEffect);
 
 //     // 检查全内反射
-//     if(horizontalElementSquared >= uTotalInternalReflection) {
+//     if (horizontalElementSquared >= uTotalInternalReflection) {
 //         HorizontalElementSquared = 0.0;
 //         reflectionRate = 1.0; // 完全反射
-//         reflectionRate2 = 1.0;
-//         refraction = TriangleNormal.xyz; // 直接使用法线
+//         reflectionRate2 = 1.0; // 完全反射
+//         refraction = SmoothedNormal; // 直接使用平滑法线作为直接替代
 //         return;
 //     }
 
 //     // 计算折射向量
 //     float verticalSizeSquared = 1.0 - horizontalElementSquared;
-//     vec3 refractVertical = rayVertical * sqrt(verticalSizeSquared / dot(rayVertical, rayVertical));
-//     refraction = refractHorizontal + refractVertical;
+
+//     // 使用 refract 函数来计算折射向量
+//     if (verticalSizeSquared >= 0.0) {
+//         vec3 refractVertical = rayVertical * sqrt(verticalSizeSquared / dot(rayVertical, rayVertical));
+//         refraction = refractHorizontal + refractVertical;
+//     } else {
+//         refraction = reflect(rayNormalized, SmoothedNormal); // 全内反射的情况下回退到反射
+//     }
 
 //     // 计算反射率
-//     reflectionRate = CalcReflectionRate(rayNormalized, TriangleNormal.xyz, uBaseReflection * PassCount, borderDot);
-//     // reflectionRate2 = CalcReflectionRate(rayNormalized, TriangleNormal.xyz, uBaseReflection * PassCount, borderDot);
+//     reflectionRate = CalcReflectionRate(rayNormalized, SmoothedNormal, uBaseReflection * PassCount, borderDot);
+//     // reflectionRate2 = CalcReflectionRate(rayNormalized, SmoothedNormal, uBaseReflection * PassCount, borderDot); // 如果需要，计算第二次反射率
 
-//      reflectionRate2 = 0.;
-
-//     // 限制反射率的最大值，以避免过于尖锐的反射
-//     if(reflectionRate > 0.4)
-//         reflectionRate = 0.4;
-//     // if(reflectionRate2 > 0.1)
-//     //     reflectionRate2 = 0.1;
+//     // 限制反射率的最大值以改善视觉效果
+//     // if (reflectionRate > 0.5)
+//     //     reflectionRate = 0.5; // 调整反射率上限
+//     // if (reflectionRate2 > 0.4) 
+//     //     reflectionRate2 = 0.4; // 调整第二次反射率上限
 // }
-
-void CollideRayWithPlane(
-    vec3 Pos,
-    float PassCount,
-    vec3 rayNormalized,
-    vec4 TriangleNormal,
-    float startSideRelativeRefraction,
-    out float reflectionRate,
-    out float reflectionRate2,
-    out vec3 reflection,
-    out vec3 refraction,
-    out float HorizontalElementSquared
-) {
-    // 计算平滑法线
-    vec3 SmoothedNormal = normalize(TriangleNormal.xyz);
-    
-    // 计算垂直分量
-    vec3 rayVertical = dot(SmoothedNormal, rayNormalized) * SmoothedNormal;
-
-    // 计算反射向量
-    reflection = rayNormalized - rayVertical * 2.0; 
-
-    // 计算水平分量
-    vec3 rayHorizontal = rayNormalized - rayVertical;
-    vec3 refractHorizontal = rayHorizontal * startSideRelativeRefraction;
-    float horizontalElementSquared = dot(refractHorizontal, refractHorizontal); 
-
-    // 计算全内反射边界
-    float borderDot = 0.0;
-    if (startSideRelativeRefraction > 1.0) {
-        borderDot = sqrt(1.0 - (1.0 / (startSideRelativeRefraction * startSideRelativeRefraction)));
-    }
-
-    HorizontalElementSquared = horizontalElementSquared; 
-
-    // 计算视线方向并归一化
-    vec3 _worldViewDir = worldSpaceViewDir(Pos);
-    _worldViewDir = normalize(_worldViewDir);
-
-    // 计算 Fresnel 系数
-    float fresnelNdotV5 = dot(rayNormalized, _worldViewDir);
-    float fresnelEffect = pow(1.0 - fresnelNdotV5, 3.0); // 使用平滑的 Fresnel 计算
-    float fresnelNode5 = (uFresnelDispersionScale * fresnelEffect);
-
-    // 检查全内反射
-    if (horizontalElementSquared >= uTotalInternalReflection) {
-        HorizontalElementSquared = 0.0;
-        reflectionRate = 1.0; // 完全反射
-        reflectionRate2 = 1.0; // 完全反射
-        refraction = SmoothedNormal; // 直接使用平滑法线作为直接替代
-        return;
-    }
-
-    // 计算折射向量
-    float verticalSizeSquared = 1.0 - horizontalElementSquared;
-
-    // 使用 refract 函数来计算折射向量
-    if (verticalSizeSquared >= 0.0) {
-        vec3 refractVertical = rayVertical * sqrt(verticalSizeSquared / dot(rayVertical, rayVertical));
-        refraction = refractHorizontal + refractVertical;
-    } else {
-        refraction = reflect(rayNormalized, SmoothedNormal); // 全内反射的情况下回退到反射
-    }
-
-    // 计算反射率
-    reflectionRate = CalcReflectionRate(rayNormalized, SmoothedNormal, uBaseReflection * PassCount, borderDot);
-    // reflectionRate2 = CalcReflectionRate(rayNormalized, SmoothedNormal, uBaseReflection * PassCount, borderDot); // 如果需要，计算第二次反射率
-
-    // 限制反射率的最大值以改善视觉效果
-    if (reflectionRate > 0.5)
-        reflectionRate = 0.5; // 调整反射率上限
-    // if (reflectionRate2 > 0.4) 
-    //     reflectionRate2 = 0.4; // 调整第二次反射率上限
-}
 
 vec4 GetUnpackedPlaneByIndex(int index) {
     int x_index = index % int(uSize.x);
@@ -195,7 +197,7 @@ float CheckCollideRayWithPlane(vec3 rayStart, vec3 rayNormalized, vec4 normalTri
 void CheckCollideRayWithAllPlanes(vec3 rayStart, vec3 rayDirection, out vec4 hitPlane, out float hitTime) {
     hitTime = 1000000.0;
     hitPlane = vec4(1, 0, 0, 1);
-    //		[unroll(20)]
+    //[unroll(20)]
     for(int i = 0; i < uPlaneCount; ++i) {
         vec4 plane = GetUnpackedPlaneByIndex(i);
         float tmpTime = CheckCollideRayWithPlane(rayStart, rayDirection, plane);
@@ -235,7 +237,7 @@ vec4 GetColorByRay(
     vec3 tmpRayDirection = rayDirection;
 
     float reflectionRates[MAX_REFLECTION];
-    float reflectionRates2;
+    float reflectionRates2[MAX_REFLECTION];
     vec4 refractionColors[MAX_REFLECTION];
     vec4 refractionColors2[MAX_REFLECTION];
     vec4 refractionColors3[MAX_REFLECTION];
@@ -278,15 +280,15 @@ vec4 GetColorByRay(
 
         // reflectionRates2[i] = reflectionRate2;
 
-        // vec3 _worldViewDir = worldSpaceViewDir(rayStart.xyz);
-        // _worldViewDir = normalize(_worldViewDir);
+        vec3 _worldViewDir = worldSpaceViewDir(rayStart.xyz);
+        _worldViewDir = normalize(_worldViewDir);
 
-        vec3 _worldViewDir = normalize(worldSpaceViewDir(tmpRayStart));
+        // vec3 _worldViewDir = normalize(worldSpaceViewDir(tmpRayStart));
 
         float fresnelNdotV5 = dot(tmpRayStart, _worldViewDir);
         float fresnelNode5 = (uFresnelDispersionScale * pow(1.0 - fresnelNdotV5, uFresnelDispersionPower));
 
-        fresnelNode5 = .05;
+        fresnelNode5 = 1.;
 
         float DispersionR = uDispersionR * uDispersion * fresnelNode5;
         float DispersionG = uDispersionG * uDispersion * fresnelNode5;
@@ -311,7 +313,7 @@ vec4 GetColorByRay(
 
         // Depth_ = Remap(Depth_, 0.997, 0.999, 1, 0);
 
-        // refractionColors3[i] = SampleEnvironment(refractionRay);
+        refractionColors3[i] = SampleEnvironment(refractionRay);
 
         refractionColors2[i] = vec4(1);
 
@@ -321,10 +323,10 @@ vec4 GetColorByRay(
 
         Color.rgb = mix(vec4(1), Color, uColorIntensity).rgb;
 
-        // depthColors[i] = vec4(CalcColorCoefByDistance(hitTime, mix(Color, vec4(1), mix(0., (refractionColors3[i].r + refractionColors3[i].g +
-        //     refractionColors3[i].b) / 2., lighttransmission))), 1.);
+        depthColors[i] = vec4(CalcColorCoefByDistance(hitTime, mix(Color, vec4(1), mix(0., (refractionColors3[i].r + refractionColors3[i].g +
+            refractionColors3[i].b) / 2., lighttransmission))), 1.);
 
-        depthColors[i] = vec4(CalcColorCoefByDistance(hitTime, vec4(Color.rgb, 1.)), 1.);
+        // depthColors[i] = vec4(CalcColorCoefByDistance(hitTime, vec4(Color.rgb, 1.)), 1.);
 
         // refractionColors2[i] = clamp(mix(refractionColors3[i], refractionColors2[i], uDispersionIntensity), 0., 1.);
 
@@ -341,8 +343,8 @@ vec4 GetColorByRay(
             // reflectionRates2[i] = 0.0;
         }
 
-        // tmpRayStart = tmpRayStart + tmpRayDirection * hitTime;
-        tmpRayStart = rayEnd;
+        tmpRayStart = tmpRayStart + tmpRayDirection * hitTime;
+        // tmpRayStart = rayEnd;
 
         tmpRayDirection = reflectionRay;
     }

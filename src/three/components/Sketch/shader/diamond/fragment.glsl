@@ -1,4 +1,4 @@
-#define MAX_REFLECTION 3
+#define MAX_REFLECTION 10
 
 varying vec2 vUv;
 varying vec3 vCameraLocalPos;
@@ -18,13 +18,16 @@ uniform float uDispersionG;
 uniform float uDispersionB;
 uniform float uBrightness;
 uniform float uPower;
-uniform int uPlaneCount;
 uniform float uColorByDepth;
 uniform float uColorIntensity;
 uniform float uDispersionIntensity;
 uniform float uLighttransmission;
 uniform float uMipMapLevel;
 uniform float uScaleIntensity;
+uniform vec3 uColor;
+
+uniform int uPlaneCount;
+uniform int uMaxReflection;
 
 uniform vec2 uSize;
 uniform sampler2D uShapeTexture;
@@ -52,12 +55,16 @@ void main() {
 
   CollideRayWithPlane(pos, 0., localRay, plane, 1.0 / tmpR, reflectionRate, reflectionRate2, reflectionRay, refractionRay, PlaneNull);
 
-  vec4 refractionColor = GetColorByRay(pos, refractionRay, tmpR, MAX_REFLECTION, vec4(1.), uLighttransmission);
+  vec4 refractionColor = GetColorByRay(pos, refractionRay, tmpR, uMaxReflection, vec4(uColor,0.4), uLighttransmission);
   refractionColor.w = 1.;
 
   vec4 test = texture2D(uShapeTexture, vUv);
 
-  gl_FragColor = pow(refractionColor,vec4(1./2.2));
+  gl_FragColor = refractionColor;
+
+  gl_FragColor.rgb = pow(gl_FragColor.rgb,vec3(1./2.2));
+
+  // gl_FragColor = pow(refractionColor,vec4(1./2.2));
 
   // gl_FragColor =vec4(test.rgb,1.);
 

@@ -25,6 +25,7 @@ uniform float uLighttransmission;
 uniform float uMipMapLevel;
 uniform float uScaleIntensity;
 uniform vec3 uColor;
+uniform float uColorAlpha;
 
 uniform int uPlaneCount;
 uniform int uMaxReflection;
@@ -55,7 +56,7 @@ void main() {
 
   CollideRayWithPlane(pos, 0., localRay, plane, 1.0 / tmpR, reflectionRate, reflectionRate2, reflectionRay, refractionRay, PlaneNull);
 
-  vec4 refractionColor = GetColorByRay(pos, refractionRay, tmpR, uMaxReflection, vec4(uColor,0.4), uLighttransmission);
+  vec4 refractionColor = GetColorByRay(pos, refractionRay, tmpR, uMaxReflection, vec4(uColor,uColorAlpha), uLighttransmission);
   refractionColor.w = 1.;
 
   vec4 test = texture2D(uShapeTexture, vUv);

@@ -3,7 +3,7 @@ import { useCubeTexture, useGLTF } from '@react-three/drei'
 import { calculateBoundingInfo, packPlaneIntoColor } from '@utils/misc'
 import { useControls } from 'leva'
 import { useEffect, useMemo } from 'react'
-import { Color, DataTexture, DoubleSide, LinearMipmapLinearFilter, ShaderMaterial, Texture, Uniform, Vector2, Vector3 } from 'three'
+import { Color, DataTexture, LinearMipmapLinearFilter, ShaderMaterial, Texture, Uniform, Vector2, Vector3 } from 'three'
 import RES from '../../RES'
 import diamondFragmentShader from '../shader/diamond/fragment.glsl'
 import diamondVertexShader from '../shader/diamond/vertex.glsl'
@@ -29,23 +29,24 @@ function Gem() {
     uDispersion: new Uniform(0),
     uFresnelDispersionScale: new Uniform(1),
     uFresnelDispersionPower: new Uniform(1),
-    uColorIntensity: new Uniform(1.7),
-    uColorByDepth: new Uniform(0.5),
+    uColorIntensity: new Uniform(1),
+    uColorByDepth: new Uniform(0.15),
     uBrightness: new Uniform(1.2),
     uPower: new Uniform(1),
     uDispersionIntensity: new Uniform(1),
-    uLighttransmission: new Uniform(0),
+    uLighttransmission: new Uniform(0.6),
     uEnvMap: new Uniform(envTex),
     uTotalInternalReflection: new Uniform(2),
     uBaseReflection: new Uniform(0.5),
-    uMipMapLevel: new Uniform(0),
+    uMipMapLevel: new Uniform(4),
     uMaxReflection: new Uniform(3),
-    uColor: new Uniform(new Color('#ffffff')),
+    uColor: new Uniform(new Color('#00CFFF')),
+    uColorAlpha: new Uniform(0.4),
   }), [])
 
   useControls('gem', {
     Color: {
-      value: '#ffffff',
+      value: '#00CFFF',
       onChange: (value) => {
         uniforms.uColor.value = new Color(value)
       },
@@ -89,6 +90,14 @@ function Gem() {
       max: 3,
       onChange: (value) => {
         uniforms.uColorIntensity.value = value
+      },
+    },
+    ColorAlpha: {
+      value: uniforms.uColorAlpha.value,
+      min: 0,
+      max: 1,
+      onChange: (value) => {
+        uniforms.uColorAlpha.value = value
       },
     },
   })
@@ -194,7 +203,7 @@ function Gem() {
 
         const shapeTex = new DataTexture(planeColor, texSize, texSize)
 
-        shapeTex.generateMipmaps = false
+        shapeTex.generateMipmaps = true
 
         shapeTex.needsUpdate = true
 
@@ -202,8 +211,6 @@ function Gem() {
           vertexShader: diamondVertexShader,
           fragmentShader: diamondFragmentShader,
           uniforms,
-          side: DoubleSide,
-          transparent: true,
         })
 
         uniforms.uCenterModel.value.copy(center)

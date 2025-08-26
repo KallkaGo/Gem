@@ -59,14 +59,7 @@ void main() {
   vec4 refractionColor = GetColorByRay(pos, refractionRay, tmpR, uMaxReflection, vec4(uColor,uColorAlpha), uLighttransmission);
   refractionColor.w = 1.;
 
-  vec4 test = texture2D(uShapeTexture, vUv);
-
   gl_FragColor = refractionColor;
 
   gl_FragColor.rgb = pow(gl_FragColor.rgb,vec3(1./2.2));
-
-  // gl_FragColor = pow(refractionColor,vec4(1./2.2));
-
-  // gl_FragColor =vec4(test.rgb,1.);
-
 }

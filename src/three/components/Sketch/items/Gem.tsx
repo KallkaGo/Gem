@@ -1,5 +1,5 @@
 import type { Mesh } from 'three'
-import { useCubeTexture, useGLTF } from '@react-three/drei'
+import { useCubeTexture, useGLTF, useTexture } from '@react-three/drei'
 import { calculateBoundingInfo, packPlaneIntoColor } from '@utils/misc'
 import { useControls } from 'leva'
 import { useEffect, useMemo } from 'react'
@@ -10,9 +10,10 @@ import diamondFragmentShader from '../shader/diamond/fragment.glsl'
 import diamondVertexShader from '../shader/diamond/vertex.glsl'
 
 function Gem() {
-  const gltf = useGLTF(RES.models.diamond2)
+  const gltf = useGLTF(RES.models.diamond3)
 
   const envTex = useCubeTexture(RES.textures.envMap, { path: '' })
+  envTex.flipY = false
   envTex.generateMipmaps = true
   envTex.minFilter = LinearMipmapLinearFilter
 
@@ -27,7 +28,7 @@ function Gem() {
     uDispersionR: new Uniform(0.68),
     uDispersionG: new Uniform(0.4),
     uDispersionB: new Uniform(0.146),
-    uDispersion: new Uniform(0),
+    uDispersion: new Uniform(1),
     uFresnelDispersionScale: new Uniform(1),
     uFresnelDispersionPower: new Uniform(1),
     uColorIntensity: new Uniform(1),
@@ -37,10 +38,10 @@ function Gem() {
     uDispersionIntensity: new Uniform(1),
     uLighttransmission: new Uniform(0.6),
     uEnvMap: new Uniform(envTex),
-    uTotalInternalReflection: new Uniform(2),
+    uTotalInternalReflection: new Uniform(1),
     uBaseReflection: new Uniform(0.5),
-    uMipMapLevel: new Uniform(4),
-    uMaxReflection: new Uniform(3),
+    uMipMapLevel: new Uniform(3),
+    uMaxReflection: new Uniform(5),
     uColor: new Uniform(new Color('#00CFFF')),
     uColorAlpha: new Uniform(0.4),
   }), [])
@@ -101,6 +102,22 @@ function Gem() {
         uniforms.uColorAlpha.value = value
       },
     },
+    BaseReflection: {
+      value: uniforms.uBaseReflection.value,
+      min: 0,
+      max: 1,
+      onChange: (value) => {
+        uniforms.uBaseReflection.value = value
+      },
+    },
+    TotalInternalReflection:{
+      value: uniforms.uTotalInternalReflection.value,
+      min: 0,
+      max: 2,
+      onChange: (value) => {
+        uniforms.uTotalInternalReflection.value = value
+      },
+    }
   })
 
   useEffect(() => {
@@ -163,7 +180,7 @@ function Gem() {
         for (let i = 0; i < verticesData.length; i += 3) {
           const primaryPosition = new Vector3(verticesData[i], verticesData[i + 1], verticesData[i + 2])
           const primaryNormal = new Vector3(normalData[i], normalData[i + 1], normalData[i + 2])
-          // 计算平滑法线
+          // // 计算平滑法线
           // const key = `${primaryPosition.x},${primaryPosition.y},${primaryPosition.z}`
           // if (!averageNormalHash.has(key)) {
           //   averageNormalHash.set(key, primaryNormal)
@@ -207,7 +224,7 @@ function Gem() {
 
         const shapeTex = new DataTexture(planeColor, texSize, texSize)
 
-        shapeTex.generateMipmaps = true
+        shapeTex.generateMipmaps = false
 
         shapeTex.needsUpdate = true
 
@@ -219,7 +236,7 @@ function Gem() {
 
         uniforms.uCenterModel.value.copy(center)
         uniforms.uShapeTexture.value = shapeTex
-        uniforms.uScale.value = Math.round(scale * 100) / 100
+        uniforms.uScale.value = scale
         uniforms.uPlaneCount.value = planeCount
         uniforms.uSize.value.set(texSize, texSize)
 

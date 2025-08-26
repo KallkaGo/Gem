@@ -1,4 +1,5 @@
 import diamond2 from '@models/gem2.glb'
+import diamond3 from '@models/gem3.glb'
 import diamond from '@models/gem.glb'
 import env_nx from '@textures/env/nx.png'
 import env_ny from '@textures/env/ny.png'
@@ -17,6 +18,7 @@ export default {
   models: {
     diamond,
     diamond2,
+    diamond3,
   },
   textures: {
     cubeEnvMap: [skybox_px, skybox_nx, skybox_py, skybox_ny, skybox_pz, skybox_nz],

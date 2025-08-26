@@ -86,4 +86,6 @@ void main() {
   gl_FragColor = finalColor;
 
   gl_FragColor.rgb = pow(gl_FragColor.rgb,vec3(1./2.2));
+
+  #include <tonemapping_fragment>
 }

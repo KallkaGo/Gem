@@ -1,8 +1,9 @@
-import type { Mesh } from 'three'
-import { useCubeTexture, useGLTF, useTexture } from '@react-three/drei'
+import type { Group, Mesh } from 'three'
+import { useCubeTexture, useGLTF } from '@react-three/drei'
+import { useFrame } from '@react-three/fiber'
 import { calculateBoundingInfo, packPlaneIntoColor } from '@utils/misc'
 import { useControls } from 'leva'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { Color, DataTexture, LinearMipmapLinearFilter, ShaderMaterial, Texture, Uniform, Vector2, Vector3 } from 'three'
 import { BufferGeometryUtils } from 'three/examples/jsm/Addons.js'
 import RES from '../../RES'
@@ -10,12 +11,13 @@ import diamondFragmentShader from '../shader/diamond/fragment.glsl'
 import diamondVertexShader from '../shader/diamond/vertex.glsl'
 
 function Gem() {
-  const gltf = useGLTF(RES.models.diamond3)
+  const gltf = useGLTF(RES.models.diamond2)
 
   const envTex = useCubeTexture(RES.textures.envMap, { path: '' })
-  envTex.flipY = false
   envTex.generateMipmaps = true
   envTex.minFilter = LinearMipmapLinearFilter
+
+  const diamondref = useRef<Group>(null)
 
   const uniforms = useMemo(() => ({
     uCenterModel: new Uniform(new Vector3(0, 0, 0)),
@@ -24,7 +26,7 @@ function Gem() {
     uSize: new Uniform(new Vector2(1, 1)),
     uScale: new Uniform(0),
     uScaleIntensity: new Uniform(1),
-    uRefractiveIndex: new Uniform(1.5),
+    uRefractiveIndex: new Uniform(1.7),
     uDispersionR: new Uniform(0.68),
     uDispersionG: new Uniform(0.4),
     uDispersionB: new Uniform(0.146),
@@ -32,18 +34,23 @@ function Gem() {
     uFresnelDispersionScale: new Uniform(1),
     uFresnelDispersionPower: new Uniform(1),
     uColorIntensity: new Uniform(1),
-    uColorByDepth: new Uniform(0.15),
+    uColorByDepth: new Uniform(0.1),
     uBrightness: new Uniform(1.2),
     uPower: new Uniform(1),
     uDispersionIntensity: new Uniform(1),
-    uLighttransmission: new Uniform(0.6),
+    uLighttransmission: new Uniform(0.3),
     uEnvMap: new Uniform(envTex),
     uTotalInternalReflection: new Uniform(1),
     uBaseReflection: new Uniform(0.5),
-    uMipMapLevel: new Uniform(3),
+    uMipMapLevel: new Uniform(0),
     uMaxReflection: new Uniform(5),
-    uColor: new Uniform(new Color('#00CFFF')),
+    uColor: new Uniform(new Color('#6dc6ff')),
     uColorAlpha: new Uniform(0.4),
+    uPostExposure: new Uniform(1),
+    uDisaturate: new Uniform(1),
+    uMin: new Uniform(0),
+    uMax: new Uniform(1),
+    uContrast: new Uniform(1),
   }), [])
 
   useControls('gem', {
@@ -110,14 +117,125 @@ function Gem() {
         uniforms.uBaseReflection.value = value
       },
     },
-    TotalInternalReflection:{
+    TotalInternalReflection: {
       value: uniforms.uTotalInternalReflection.value,
       min: 0,
       max: 2,
       onChange: (value) => {
         uniforms.uTotalInternalReflection.value = value
       },
-    }
+    },
+    MipMapLevel: {
+      value: uniforms.uMipMapLevel.value,
+      min: 0,
+      max: 10,
+      step: 1,
+      onChange: (value) => {
+        uniforms.uMipMapLevel.value = value
+      },
+    },
+  })
+
+  useControls('dispersion', {
+    Dispersion: {
+      value: uniforms.uDispersion.value,
+      min: 0,
+      max: 2,
+      onChange: (value) => {
+        uniforms.uDispersion.value = value
+      },
+    },
+    DispersionIntensity: {
+      value: uniforms.uDispersionIntensity.value,
+      min: 0,
+      max: 10,
+      onChange: (value) => {
+        uniforms.uDispersionIntensity.value = value
+      },
+    },
+    DispersionR: {
+      value: uniforms.uDispersionR.value,
+      min: -0.5,
+      max: 1,
+      onChange: (value) => {
+        uniforms.uDispersionR.value = value
+      },
+    },
+    DispersionG: {
+      value: uniforms.uDispersionG.value,
+      min: -0.5,
+      max: 1,
+      onChange: (value) => {
+        uniforms.uDispersionG.value = value
+      },
+    },
+    DispersionB: {
+      value: uniforms.uDispersionB.value,
+      min: -0.5,
+      max: 1,
+      onChange: (value) => {
+        uniforms.uDispersionB.value = value
+      },
+    },
+  })
+
+  useControls('ToneMap', {
+    Brightness: {
+      value: uniforms.uBrightness.value,
+      min: 0,
+      max: 2,
+      onChange: (value) => {
+        uniforms.uBrightness.value = value
+      },
+    },
+    Power: {
+      value: uniforms.uPower.value,
+      min: 0,
+      max: 2,
+      onChange: (value) => {
+        uniforms.uPower.value = value
+      },
+    },
+    Contrast: {
+      value: uniforms.uContrast.value,
+      min: 0,
+      max: 2,
+      onChange: (value) => {
+        uniforms.uContrast.value = value
+      },
+    },
+    Disaturate: {
+      value: uniforms.uDisaturate.value,
+      min: 0,
+      max: 2,
+      onChange: (value) => {
+        uniforms.uDisaturate.value = value
+      },
+    },
+    Min: {
+      value: uniforms.uMin.value,
+      min: -1,
+      max: 1,
+      onChange: (value) => {
+        uniforms.uMin.value = value
+      },
+    },
+    Max: {
+      value: uniforms.uMax.value,
+      min: 0,
+      max: 2,
+      onChange: (value) => {
+        uniforms.uMax.value = value
+      },
+    },
+    PostExposure: {
+      value: uniforms.uPostExposure.value,
+      min: 0,
+      max: 10,
+      onChange: (value) => {
+        uniforms.uPostExposure.value = value
+      },
+    },
   })
 
   useEffect(() => {
@@ -249,8 +367,15 @@ function Gem() {
     })
   }, [])
 
+  useFrame((_, delta) => {
+    delta %= 1
+    // diamondref.current!.rotation.y += delta * 0.1
+  })
+
   return (
-    <primitive object={gltf.scene} />
+    <group ref={diamondref}>
+      <primitive object={gltf.scene} />
+    </group>
   )
 }
 

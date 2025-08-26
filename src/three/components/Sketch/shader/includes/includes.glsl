@@ -8,6 +8,53 @@ float Remap(float value, float min1, float max1, float min2, float max2) {
     return (min2 + (value - min1) * (max2 - min2) / (max1 - min1));
 }
 
+vec4 CalculateContrast(float contrastValue, vec4 colorTarget) {
+    float t = 0.5 * (1.0 - contrastValue);
+
+    // Create the transformation matrix
+    mat4 contrastMatrix = mat4(contrastValue, 0.0, 0.0, t, 0.0, contrastValue, 0.0, t, 0.0, 0.0, contrastValue, t, 0.0, 0.0, 0.0, 1.0);
+
+    // Apply the transformation
+    return contrastMatrix * colorTarget;
+}
+vec4 ToneMap(vec4 MainColor, float brightness, float Disaturate, float _max, float _min, float contrast, float Satur) {
+    vec4 outputColor = MainColor;
+
+    // Apply brightness adjustment
+    outputColor *= brightness;
+
+    // Apply contrast
+    outputColor = CalculateContrast(contrast, outputColor);
+
+    // Desaturate
+    float disatur = dot(outputColor.rgb, vec3(0.299, 0.587, 0.114));
+    outputColor = mix(outputColor, vec4(disatur, disatur, disatur, outputColor.a), clamp(pow((outputColor.r + outputColor.g + outputColor.b) / 3.0 * Disaturate, 1.3), 0.0, 1.0));
+
+    // Remap colors
+    outputColor.r = clamp(Remap(outputColor.r, 0.0, 1.0, _min, mix(_max, 1.0, 0.5)), 0.0, 1.5);
+    outputColor.g = clamp(Remap(outputColor.g, 0.0, 1.0, _min, mix(_max, 1.0, 0.5)), 0.0, 1.5);
+    outputColor.b = clamp(Remap(outputColor.b, 0.0, 1.0, _min, mix(_max, 1.0, 0.5)), 0.0, 1.5);
+
+    // Apply contrast using exponentiation
+    outputColor = pow(outputColor, vec4(contrast));
+
+    // Adjust output with smoothstep for limits
+    outputColor = mix(clamp(outputColor, 0.0, _max), outputColor, pow(_max, 4.0));
+
+    // Apply smoothstep logic
+    outputColor = mix(smoothstep(-0.1, 0.25, outputColor), outputColor, (1.0 - distance(vec3(1.0), vec3(_max)) * 2.0));
+
+    // Blend with the desaturated value based on saturation parameter
+    outputColor = mix(vec4(disatur, disatur, disatur, outputColor.a), outputColor, Satur);
+
+    // Final brightness adjustment
+    outputColor *= mix(vec4(brightness), vec4(1.0), 0.75);
+
+    return outputColor;
+}
+
+// Note: Ensure the Remap function is implemented properly in GLSL.
+
 float CalcReflectionRate(vec3 normal, vec3 ray, float baseReflection, float borderDot) {
     float normalizedDot = clamp((abs(dot(normal, ray)) - borderDot) / (1.0 - borderDot), 0.0, 1.0);
 
@@ -26,6 +73,8 @@ void CollideRayWithPlane(
     out vec3 refraction,
     out float HorizontalElementSquared
 ) {
+    
+
     vec3 rayVertical = dot(TriangleNormal.xyz, rayNormalized) * TriangleNormal.xyz;
     reflection = rayNormalized - rayVertical * 2.0;
 
@@ -137,7 +186,9 @@ vec4 SampleEnvironment(vec3 rayLocal) {
 
     rayWorld = normalize(rayWorld);
 
-    vec4 tex = textureLod(uEnvMap, rayWorld, uMipMapLevel );
+    rayWorld.x *= -1.;
+
+    vec4 tex = textureLod(uEnvMap, rayWorld, uMipMapLevel);
 
     return tex;
     // return float4(DecodeHDR(tex, _Environment_HDR), 1);
@@ -244,11 +295,11 @@ vec4 GetColorByRay(
 
         refractionColors2[i] = clamp(mix(refractionColors3[i], refractionColors2[i], uDispersionIntensity), 0., 1.);
 
-        float CLR = refractionRay.x;
+        // float CLR = refractionRay.x;
 
-        if(CLR < 0.0) {
-            CLR = CLR * -1.0;
-        }
+        // if(CLR < 0.0) {
+        //     CLR = CLR * -1.0;
+        // }
 
         // refractionColors[i] = SampleEnvironment(refractionRay);
 

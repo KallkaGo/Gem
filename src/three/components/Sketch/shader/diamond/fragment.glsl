@@ -30,6 +30,13 @@ uniform float uColorAlpha;
 uniform int uPlaneCount;
 uniform int uMaxReflection;
 
+/* toneMap */
+uniform float uPostExposure;
+uniform float uDisaturate;
+uniform float uMax;
+uniform float uMin;
+uniform float uContrast;
+
 uniform vec2 uSize;
 uniform sampler2D uShapeTexture;
 uniform samplerCube uEnvMap;
@@ -37,6 +44,7 @@ uniform samplerCube uEnvMap;
 #include "../includes/includes.glsl"
 
 void main() {
+
   vec3 cameraLocal = vCameraLocalPos;
   vec3 pos = vPos;
   vec3 normal = normalize(vNormal);
@@ -56,10 +64,26 @@ void main() {
 
   CollideRayWithPlane(pos, 0., localRay, plane, 1.0 / tmpR, reflectionRate, reflectionRate2, reflectionRay, refractionRay, PlaneNull);
 
-  vec4 refractionColor = GetColorByRay(pos, refractionRay, tmpR, uMaxReflection, vec4(uColor,uColorAlpha), uLighttransmission);
+  vec4 refractionColor = GetColorByRay(pos, refractionRay, tmpR, uMaxReflection, vec4(uColor, uColorAlpha), uLighttransmission);
   refractionColor.w = 1.;
 
-  gl_FragColor = refractionColor;
+  vec4 finalColor = refractionColor;
+
+  finalColor = ToneMap(finalColor, uPostExposure, uDisaturate, uMax, uMin, uContrast, 1.);
+
+  if(finalColor.r > 1.) {
+    finalColor.rgb = finalColor.rgb * 2.;
+  }
+
+  if(finalColor.r > 1.) {
+    finalColor.rgb = finalColor.rgb * 2.;
+  }
+
+  if(finalColor.r > 1.) {
+    finalColor.rgb = finalColor.rgb * 2.;
+  }
+
+  gl_FragColor = finalColor;
 
   gl_FragColor.rgb = pow(gl_FragColor.rgb,vec3(1./2.2));
 }

@@ -27,16 +27,16 @@ function Gem() {
     uScale: new Uniform(0),
     uScaleIntensity: new Uniform(1),
     uRefractiveIndex: new Uniform(1.7),
-    uDispersionR: new Uniform(0.68),
-    uDispersionG: new Uniform(0.4),
+    uDispersionR: new Uniform(-0.32),
+    uDispersionG: new Uniform(-0.167),
     uDispersionB: new Uniform(0.146),
     uDispersion: new Uniform(1),
     uFresnelDispersionScale: new Uniform(1),
     uFresnelDispersionPower: new Uniform(1),
     uColorIntensity: new Uniform(1),
-    uColorByDepth: new Uniform(0.1),
+    uColorByDepth: new Uniform(0.46),
     uBrightness: new Uniform(1.2),
-    uPower: new Uniform(1),
+    uPower: new Uniform(1.06),
     uDispersionIntensity: new Uniform(1),
     uLighttransmission: new Uniform(0.3),
     uEnvMap: new Uniform(envTex),
@@ -45,17 +45,17 @@ function Gem() {
     uMipMapLevel: new Uniform(0),
     uMaxReflection: new Uniform(5),
     uColor: new Uniform(new Color('#6dc6ff')),
-    uColorAlpha: new Uniform(0.4),
+    uColorAlpha: new Uniform(1),
     uPostExposure: new Uniform(1),
     uDisaturate: new Uniform(1),
     uMin: new Uniform(0),
     uMax: new Uniform(1),
-    uContrast: new Uniform(1),
+    uContrast: new Uniform(1.16),
   }), [])
 
   useControls('gem', {
     Color: {
-      value: '#00CFFF',
+      value: '#00c42a',
       onChange: (value) => {
         uniforms.uColor.value = new Color(value)
       },
@@ -96,7 +96,7 @@ function Gem() {
     ColorIntensity: {
       value: uniforms.uColorIntensity.value,
       min: 0,
-      max: 3,
+      max: 1,
       onChange: (value) => {
         uniforms.uColorIntensity.value = value
       },
@@ -369,13 +369,13 @@ function Gem() {
 
   useFrame((_, delta) => {
     delta %= 1
-    // diamondref.current!.rotation.y += delta * 0.1
   })
 
   return (
     <group ref={diamondref}>
-      <primitive object={gltf.scene} />
+      <primitive object={gltf.scene} rotation-x={Math.PI / 3} />
     </group>
+
   )
 }
 

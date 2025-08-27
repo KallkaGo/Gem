@@ -2,6 +2,8 @@ varying vec2 vUv;
 varying vec3 vCameraLocalPos;
 varying vec3 vPos;
 varying vec3 vNormal;
+varying vec3 vWorldNormal;
+varying vec3 vWorldDir;
 varying mat4 objectToWorldMatrix;
 
 uniform vec3 uCenterModel;
@@ -9,14 +11,14 @@ uniform vec3 uCenterModel;
 void main(){
 
   vec3 pos = position;
-  pos.x = pos.x - uCenterModel.x;
-  pos.y = pos.y - uCenterModel.y;
-  pos.z = pos.z - uCenterModel.z;
+  // pos.x = pos.x - uCenterModel.x;
+  // pos.y = pos.y - uCenterModel.y;
+  // pos.z = pos.z - uCenterModel.z;
 
   mat4 worldToLocalMatrix = inverse( modelMatrix );
-  worldToLocalMatrix[3][0] = worldToLocalMatrix[3][0] - uCenterModel.x;
-  worldToLocalMatrix[3][1] = worldToLocalMatrix[3][1] - uCenterModel.y;
-  worldToLocalMatrix[3][2] = worldToLocalMatrix[3][2] - uCenterModel.z;
+  // worldToLocalMatrix[3][0] = worldToLocalMatrix[3][0] - uCenterModel.x;
+  // worldToLocalMatrix[3][1] = worldToLocalMatrix[3][1] - uCenterModel.y;
+  // worldToLocalMatrix[3][2] = worldToLocalMatrix[3][2] - uCenterModel.z;
 
   vec3 cameraLocalPos = (worldToLocalMatrix * vec4( cameraPosition, 1.0 )).xyz;
   vec4 modelPosition = modelMatrix * vec4( position, 1.0 );
@@ -28,4 +30,6 @@ void main(){
   vNormal = normal;
   vCameraLocalPos = cameraLocalPos;
   objectToWorldMatrix = modelMatrix;
+  vWorldDir = normalize(modelPosition.xyz - cameraPosition);
+  vWorldNormal = (inverse(transpose(modelMatrix)) * vec4(normal,0.)).xyz;
 }

@@ -7,6 +7,7 @@ import env_nz from '@textures/env/nz.png'
 import env_px from '@textures/env/px.png'
 import env_py from '@textures/env/py.png'
 import env_pz from '@textures/env/pz.png'
+import env_gem from '@textures/reflect/env_gem.exr'
 import skybox_nx from '@textures/skybox/nx.png'
 import skybox_ny from '@textures/skybox/ny.png'
 import skybox_nz from '@textures/skybox/nz.png'
@@ -23,5 +24,6 @@ export default {
   textures: {
     cubeEnvMap: [skybox_px, skybox_nx, skybox_py, skybox_ny, skybox_pz, skybox_nz],
     envMap: [env_px, env_nx, env_py, env_ny, env_pz, env_nz],
+    env_gem,
   },
 }

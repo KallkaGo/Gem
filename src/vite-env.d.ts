@@ -10,6 +10,11 @@ declare module "*.hdr" {
     export default src;
 }
 
+declare module "*.exr" {
+    const src: string;
+    export default src;
+}
+
 declare type Div = HTMLDivElement;
 declare type Button = HTMLButtonElement;
 declare type Audio = HTMLAudioElement;

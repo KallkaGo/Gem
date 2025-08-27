@@ -73,7 +73,6 @@ float CalcReflectionRate(vec3 normal, vec3 ray, float baseReflection, float bord
 //     out vec3 refraction,
 //     out float HorizontalElementSquared
 // ) {
-    
 
 //     vec3 rayVertical = dot(TriangleNormal.xyz, rayNormalized) * TriangleNormal.xyz;
 //     reflection = rayNormalized - rayVertical * 2.0;
@@ -153,10 +152,10 @@ void CollideRayWithPlane(
     float borderDot = 0.0; // 在这里初始化 borderDot
 
     // 处理全内反射的检查
-    if (startSideRelativeRefraction > 1.0) {
+    if(startSideRelativeRefraction > 1.0) {
         borderDot = sqrt(1.0 - 1.0 / (startSideRelativeRefraction * startSideRelativeRefraction));
         // 更新反射率以处理全内反射情况
-        if (horizontalElementSquared >= uTotalInternalReflection) {
+        if(horizontalElementSquared >= uTotalInternalReflection) {
             HorizontalElementSquared = 0.0;
             reflectionRate = 1.0;
             reflectionRate2 = 1.0;
@@ -167,20 +166,22 @@ void CollideRayWithPlane(
 
     // 计算垂直分量
     float verticalSizeSquared = 1.0 - horizontalElementSquared;
-    vec3 refractVertical = rayVertical * sqrt(verticalSizeSquared / max(dot(rayVertical, rayVertical), 1e-10)); // 避免除以零，加入小的epsilon值
+    vec3 refractVertical = rayVertical * sqrt(verticalSizeSquared / dot(rayVertical, rayVertical));
     refraction = refractHorizontal + refractVertical;
+
+    // refraction = refract(rayNormalized, triangleNormal, startSideRelativeRefraction);
 
     // 计算反射率
     vec3 _worldViewDir = normalize(worldSpaceViewDir(Pos)); // 归一化视线方向
     float fresnelNdotV = dot(rayNormalized, _worldViewDir); // 简化变量名称
     float fresnelFactor = uFresnelDispersionScale * pow(1.0 - fresnelNdotV, uFresnelDispersionPower);
-    
+
     // 最终水平元素平方的计算
     HorizontalElementSquared = horizontalElementSquared / 3.0;
-    
+
     // 计算反射率
     reflectionRate = CalcReflectionRate(rayNormalized, triangleNormal, uBaseReflection * PassCount, borderDot);
-    reflectionRate2 = reflectionRate; // 如果需要不同的计算，可以取消注释
+    // reflectionRate2 = reflectionRate;
 }
 
 vec4 GetUnpackedPlaneByIndex(int index) {
@@ -221,7 +222,6 @@ float CheckCollideRayWithPlane(vec3 rayStart, vec3 rayNormalized, vec4 normalTri
 void CheckCollideRayWithAllPlanes(vec3 rayStart, vec3 rayDirection, out vec4 hitPlane, out float hitTime) {
     hitTime = 1e6;
     hitPlane = vec4(1, 0, 0, 1);
-    //		[unroll(20)]
     for(int i = 0; i < uPlaneCount; ++i) {
         vec4 plane = GetUnpackedPlaneByIndex(i);
         float tmpTime = CheckCollideRayWithPlane(rayStart, rayDirection, plane);
@@ -234,13 +234,20 @@ void CheckCollideRayWithAllPlanes(vec3 rayStart, vec3 rayDirection, out vec4 hit
 }
 
 vec4 SampleEnvironment(vec3 rayLocal) {
-    vec3 rayWorld = (objectToWorldMatrix * vec4(rayLocal, 0.)).xyz;
+    vec3 direction = (objectToWorldMatrix * vec4(rayLocal, 0.)).xyz;
+    direction = normalize(direction);
+    float cs = cos(uEnvRotation);
+    float sn = sin(uEnvRotation);
+    float temp = cs * direction.x + sn * direction.z;
+    direction.z = -sn * direction.x + cs * direction.z;
+    direction.x = temp;
+    direction.x *= -1.;
+    direction.y *= -1.;
+    direction.z *= -1.;
+    vec3 t = 2. * cross(uEnvMapRotationQuat.xyz, direction);
+    direction += uEnvMapRotationQuat.w * t + cross(uEnvMapRotationQuat.xyz, t);
 
-    rayWorld = normalize(rayWorld);
-
-    rayWorld.x *= -1.;
-
-    vec4 tex = textureLod(uEnvMap, rayWorld, uMipMapLevel);
+    vec4 tex = textureLod(uEnvMap, cartesianToPolar(direction), uMipMapLevel);
 
     return tex;
 }
@@ -272,7 +279,6 @@ vec4 GetColorByRay(
 
     int badRay = 0;
 
-    //  [unroll(10)]
     for(int i = 0; i < loopCount; ++i) {
         float hitTime = 1e6;
         vec4 hitPlane = vec4(1, 0, 0, 1);
@@ -318,14 +324,16 @@ vec4 GetColorByRay(
         float DispersionG = uDispersionG * uDispersion * fresnelNode5;
         float DispersionB = uDispersionB * uDispersion * fresnelNode5;
 
-        vec3 DispersionRay_r = mix(refractionRay, mix(rayEnd, refractionRay, 2.), DispersionR * PlaneNull);
+        vec3 rayMix = mix(rayEnd, refractionRay, 2.);
+
+        vec3 DispersionRay_r = mix(refractionRay, rayMix, DispersionR * PlaneNull);
 
         //    PlaneNull = lerp(PlaneNull, 1, 0.2);
 
-        vec3 DispersionRay_g = mix(refractionRay, mix(rayEnd, refractionRay, 2.), DispersionG * PlaneNull);
+        vec3 DispersionRay_g = mix(refractionRay, rayMix, DispersionG * PlaneNull);
 
         //   PlaneNull = lerp(PlaneNull, 1, 0.2);
-        vec3 DispersionRay_b = mix(refractionRay, mix(rayEnd, refractionRay, 2.), DispersionB * PlaneNull);
+        vec3 DispersionRay_b = mix(refractionRay, rayMix, DispersionB * PlaneNull);
 
         // float Depth_ = depthColors[i];
 

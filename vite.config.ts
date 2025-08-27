@@ -10,7 +10,7 @@ const isCodeSandbox
 export default defineConfig({
   base: './',
   publicDir: './public',
-  assetsInclude: ['**/*.glb', '**/*.hdr', '**/*.mp3', '**/*.ico'],
+  assetsInclude: ['**/*.glb', '**/*.hdr', '**/*.mp3', '**/*.ico','**/*.exr'],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src/'),

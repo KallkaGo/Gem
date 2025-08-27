@@ -1,8 +1,6 @@
 import { OrbitControls, useCubeTexture } from '@react-three/drei'
 import { useThree } from '@react-three/fiber'
-import { Bloom, EffectComposer, ToneMapping } from '@react-three/postprocessing'
 import { useInteractStore, useLoadedStore } from '@utils/Store'
-import { ToneMappingMode } from 'postprocessing'
 import { useEffect } from 'react'
 import RES from '../RES'
 import Gem from './items/Gem'

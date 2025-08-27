@@ -1,21 +1,34 @@
 import type { Group, Mesh } from 'three'
 import { useCubeTexture, useGLTF } from '@react-three/drei'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useLoader } from '@react-three/fiber'
 import { calculateBoundingInfo, packPlaneIntoColor } from '@utils/misc'
 import { useControls } from 'leva'
 import { useEffect, useMemo, useRef } from 'react'
-import { Color, DataTexture, LinearMipmapLinearFilter, ShaderMaterial, Texture, Uniform, Vector2, Vector3 } from 'three'
+import { Color, DataTexture, Euler, LinearMipmapLinearFilter, Quaternion, ShaderMaterial, Texture, Uniform, Vector2, Vector3 } from 'three'
+import { EXRLoader } from 'three-stdlib'
 import { BufferGeometryUtils } from 'three/examples/jsm/Addons.js'
 import RES from '../../RES'
 import diamondFragmentShader from '../shader/diamond/fragment.glsl'
 import diamondVertexShader from '../shader/diamond/vertex.glsl'
 
 function Gem() {
-  const gltf = useGLTF(RES.models.diamond2)
+  const gltf = useGLTF(RES.models.diamond3)
 
   const envTex = useCubeTexture(RES.textures.envMap, { path: '' })
-  envTex.generateMipmaps = true
   envTex.minFilter = LinearMipmapLinearFilter
+
+  const baseParam = useRef({
+    envRotationX: 0,
+    envRotationY: 0,
+    envRotationZ: 0,
+  })
+
+  // const reflectTex = useEnvironment({ files: RES.textures.env_gem })
+  // reflectTex.generateMipmaps = true
+  // reflectTex.minFilter = LinearMipmapLinearFilter
+
+  const reflectTex = useLoader(EXRLoader, RES.textures.env_gem)
+  // reflectTex.repeat.set(2, 2)
 
   const diamondref = useRef<Group>(null)
 
@@ -39,7 +52,7 @@ function Gem() {
     uPower: new Uniform(1.06),
     uDispersionIntensity: new Uniform(1),
     uLighttransmission: new Uniform(0.3),
-    uEnvMap: new Uniform(envTex),
+    uEnvMap: new Uniform(reflectTex),
     uTotalInternalReflection: new Uniform(1),
     uBaseReflection: new Uniform(0.5),
     uMipMapLevel: new Uniform(0),
@@ -51,6 +64,10 @@ function Gem() {
     uMin: new Uniform(0),
     uMax: new Uniform(1),
     uContrast: new Uniform(1.16),
+    uReflectMap: new Uniform(reflectTex),
+    uReflective: new Uniform(0.2),
+    uEnvRotation: new Uniform(0),
+    uEnvMapRotationQuat: new Uniform(new Quaternion()),
   }), [])
 
   useControls('gem', {
@@ -236,6 +253,42 @@ function Gem() {
         uniforms.uPostExposure.value = value
       },
     },
+    Reflective: {
+      value: uniforms.uReflective.value,
+      min: 0,
+      max: 2,
+      onChange: (value) => {
+        uniforms.uReflective.value = value
+      },
+    },
+  })
+
+  useControls('Env', {
+    rotationX: {
+      value: baseParam.current.envRotationX,
+      min: 0,
+      max: Math.PI * 2,
+      onChange: (value) => {
+        baseParam.current.envRotationX = value
+      },
+    },
+    rotationY: {
+      value: baseParam.current.envRotationY,
+      min: 0,
+      max: Math.PI * 2,
+      onChange: (value) => {
+        baseParam.current.envRotationY = value
+      },
+    },
+    rotationZ: {
+      value: baseParam.current.envRotationZ,
+      min: 0,
+      max: Math.PI * 2,
+      onChange: (value) => {
+        baseParam.current.envRotationZ = value
+      },
+    },
+
   })
 
   useEffect(() => {
@@ -369,11 +422,17 @@ function Gem() {
 
   useFrame((_, delta) => {
     delta %= 1
+    const { envRotationX, envRotationY, envRotationZ } = baseParam.current
+    uniforms.uEnvMapRotationQuat.value.setFromEuler(new Euler(envRotationX, envRotationY, envRotationZ))
+    // diamondref.current!.rotation.y += delta * 0.2
   })
 
   return (
     <group ref={diamondref}>
-      <primitive object={gltf.scene} rotation-x={Math.PI / 3} />
+      <primitive
+        object={gltf.scene}
+        // rotation-x={Math.PI / 3}
+      />
     </group>
 
   )

@@ -18,7 +18,7 @@ export default function ThreeContainer() {
         camera={{
           fov: 50,
           near: 0.1,
-          position: [0, 0.5, 2],
+          position: [0, 0.5, 4],
           far: 100,
         }}
         gl={{ toneMapping: ACESFilmicToneMapping }}

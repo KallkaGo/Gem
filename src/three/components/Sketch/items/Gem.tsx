@@ -1,11 +1,10 @@
 import type { Group, Mesh } from 'three'
-import { useCubeTexture, useGLTF } from '@react-three/drei'
-import { useFrame, useLoader } from '@react-three/fiber'
+import { useCubeTexture, useEnvironment, useGLTF } from '@react-three/drei'
+import { useFrame } from '@react-three/fiber'
 import { calculateBoundingInfo, packPlaneIntoColor } from '@utils/misc'
 import { useControls } from 'leva'
 import { useEffect, useMemo, useRef } from 'react'
 import { Color, DataTexture, Euler, LinearMipmapLinearFilter, Quaternion, ShaderMaterial, Texture, Uniform, Vector2, Vector3 } from 'three'
-import { EXRLoader } from 'three-stdlib'
 import { BufferGeometryUtils } from 'three/examples/jsm/Addons.js'
 import RES from '../../RES'
 import diamondFragmentShader from '../shader/diamond/fragment.glsl'
@@ -23,11 +22,11 @@ function Gem() {
     envRotationZ: 0,
   })
 
-  // const reflectTex = useEnvironment({ files: RES.textures.env_gem })
-  // reflectTex.generateMipmaps = true
-  // reflectTex.minFilter = LinearMipmapLinearFilter
+  const reflectTex = useEnvironment({ files: RES.textures.env_gem })
+  reflectTex.generateMipmaps = true
+  reflectTex.minFilter = LinearMipmapLinearFilter
 
-  const reflectTex = useLoader(EXRLoader, RES.textures.env_gem)
+  // const reflectTex = useLoader(EXRLoader, RES.textures.env_gem)
   // reflectTex.repeat.set(2, 2)
 
   const diamondref = useRef<Group>(null)
@@ -295,7 +294,12 @@ function Gem() {
     gltf.scene.traverse((child) => {
       if ((child as Mesh).isMesh) {
         const mesh = child as Mesh
+        // if (mesh.name !== 'Gem') {
+        //   // mesh.visible = false
+        //   return
+        // }
         const geometry = BufferGeometryUtils.mergeVertices(mesh.geometry)
+        // const geometry = mesh.geometry
         const verticesData = new Float32Array(geometry.attributes.position.array)
         const normalData = new Float32Array(geometry.attributes.normal.array)
         // const indexData = mesh.geometry.index?.array as Uint16Array ?? []

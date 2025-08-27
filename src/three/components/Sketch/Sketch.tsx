@@ -14,6 +14,7 @@ function Sketch() {
 
   useEffect(() => {
     scene.background = envTex
+    scene.environment = envTex
     useLoadedStore.setState({ ready: true })
   }, [])
 

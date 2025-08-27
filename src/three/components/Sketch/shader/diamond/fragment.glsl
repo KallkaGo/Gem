@@ -109,22 +109,6 @@ void main() {
 
   vec4 finalColor = refractionColor;
 
-  finalColor = ToneMap(finalColor, uPostExposure, uDisaturate, uMax, uMin, uContrast, 1.);
-
-  finalColor.a = 1.;
-
-  if(finalColor.r > 1.) {
-    finalColor.rgb = finalColor.rgb * 2.;
-  }
-
-  if(finalColor.r > 1.) {
-    finalColor.rgb = finalColor.rgb * 2.;
-  }
-
-  if(finalColor.r > 1.) {
-    finalColor.rgb = finalColor.rgb * 2.;
-  }
-
   const float n1 = 1.;
   float f0 = (2.4 - n1) / (2.4 + n1);
   f0 *= f0;
@@ -142,6 +126,22 @@ void main() {
   reflectionColor = SampleSpecularReflection(uReflectMap, reflectedDirection).rgb * brdfReflected * 2. * uReflective;
 
   finalColor.rgb += reflectionColor;
+
+  finalColor = ToneMap(finalColor, uPostExposure, uDisaturate, uMax, uMin, uContrast, 1.);
+
+  finalColor.a = 1.;
+
+  if(finalColor.r > 1.) {
+    finalColor.rgb = finalColor.rgb * 2.;
+  }
+
+  if(finalColor.r > 1.) {
+    finalColor.rgb = finalColor.rgb * 2.;
+  }
+
+  if(finalColor.r > 1.) {
+    finalColor.rgb = finalColor.rgb * 2.;
+  }
 
   gl_FragColor = finalColor;
 

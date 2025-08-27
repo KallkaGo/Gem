@@ -233,21 +233,29 @@ void CheckCollideRayWithAllPlanes(vec3 rayStart, vec3 rayDirection, out vec4 hit
     }
 }
 
+vec3 rotateQuaternion(vec4 q, vec3 v) {
+    vec3 uv = cross(q.xyz, v);
+    vec3 uuv = cross(q.xyz, uv);
+    return v + (uv * 2.0 * q.w) + (uuv * 2.0);
+}
+
 vec4 SampleEnvironment(vec3 rayLocal) {
     vec3 direction = (objectToWorldMatrix * vec4(rayLocal, 0.)).xyz;
     direction = normalize(direction);
-    float cs = cos(uEnvRotation);
-    float sn = sin(uEnvRotation);
-    float temp = cs * direction.x + sn * direction.z;
-    direction.z = -sn * direction.x + cs * direction.z;
-    direction.x = temp;
-    direction.x *= -1.;
-    direction.y *= -1.;
-    direction.z *= -1.;
-    vec3 t = 2. * cross(uEnvMapRotationQuat.xyz, direction);
-    direction += uEnvMapRotationQuat.w * t + cross(uEnvMapRotationQuat.xyz, t);
-
-    vec4 tex = textureLod(uEnvMap, cartesianToPolar(direction), uMipMapLevel);
+    // float cs = cos(uEnvRotation);
+    // float sn = sin(uEnvRotation);
+    // float temp = cs * direction.x + sn * direction.z;
+    // direction.z = -sn * direction.x + cs * direction.z;
+    // direction.x = temp;
+    // // direction.x *= -1.;
+    // // direction.y *= -1.;
+    // // direction.z *= -1.;
+    // vec3 t = 2. * cross(uEnvMapRotationQuat.xyz, direction);
+    // direction += uEnvMapRotationQuat.w * t + cross(uEnvMapRotationQuat.xyz, t);
+     // 如果在世界空间下旋转，可以使用world方向和不同的旋转
+    // 这里是应用四元数旋转的示例
+    vec3 rotatedDirection = rotateQuaternion(uEnvMapRotationQuat, direction);
+    vec4 tex = textureLod(uEnvMap, cartesianToPolar(rotatedDirection), uMipMapLevel);
 
     return tex;
 }

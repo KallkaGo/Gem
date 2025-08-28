@@ -21,6 +21,7 @@ export default antfu({
       },
     ],
     'style/no-tabs': ['error', { allowIndentationTabs: true }],
+    '@typescript-eslint/ban-ts-comment': 'off',
   },
   ignores: [
     'public/**/*',

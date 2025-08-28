@@ -39,6 +39,7 @@
       "vite-plugin-glsl/ext"
     ],
     "allowImportingTsExtensions": true,
+    "allowJs": true,
     /* Linting */
     "strict": true,
     "noEmit": true,

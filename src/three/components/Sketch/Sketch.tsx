@@ -3,7 +3,7 @@ import { useThree } from '@react-three/fiber'
 import { useInteractStore, useLoadedStore } from '@utils/Store'
 import { useEffect } from 'react'
 import RES from '../RES'
-import Gem from './items/Gem'
+import Gem2 from './items/Gem2'
 
 function Sketch() {
   const envTex = useCubeTexture(RES.textures.cubeEnvMap, { path: '' })
@@ -22,7 +22,7 @@ function Sketch() {
     <>
       <OrbitControls domElement={controlDom} />
       <color attach="background" args={['black']} />
-      <Gem />
+      <Gem2 />
     </>
   )
 }

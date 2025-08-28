@@ -1,5 +1,5 @@
 import type { ObjectMap } from '@react-three/fiber'
-import type { BufferAttribute, BufferGeometry, Material, Mesh, Object3D, WebGLProgramParametersWithUniforms } from 'three'
+import type { BufferAttribute, BufferGeometry, CubeCamera, Material, Mesh, Object3D, Scene, WebGLCubeRenderTarget, WebGLProgramParametersWithUniforms } from 'three'
 import type CustomShaderMaterial from 'three-custom-shader-material/vanilla'
 import type { GLTF } from 'three-stdlib'
 // @ts-ignore
@@ -248,13 +248,15 @@ function computeOffsets(geo: BufferGeometry) {
   return offsets
 }
 
-function prepareDiamondMesh(mesh: Mesh) {
-  const offset = computeOffsets(mesh.geometry)
-  console.log('offset', offset)
+function captureNormals() {
+
 }
 
+
 export {
-  prepareDiamondMesh,
+  captureNormals,
+  computeOffsets,
   useModifyCSM,
   useModifyMaterial,
+
 }

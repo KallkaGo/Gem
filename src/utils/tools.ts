@@ -1,5 +1,5 @@
 import type { ObjectMap } from '@react-three/fiber'
-import type { BufferAttribute, BufferGeometry, CubeCamera, Material, Mesh, Object3D, Scene, WebGLCubeRenderTarget, WebGLProgramParametersWithUniforms } from 'three'
+import type { BufferAttribute, BufferGeometry, Material, Mesh, Object3D, WebGLProgramParametersWithUniforms } from 'three'
 import type CustomShaderMaterial from 'three-custom-shader-material/vanilla'
 import type { GLTF } from 'three-stdlib'
 // @ts-ignore
@@ -82,9 +82,8 @@ function createTransformMatrix(eigenVectors: Array<{ eigenvalue: number, vector:
     eigenVectors[2].vector[2],
   )
 
-  // 确保坐标系方向一致
+  // 处理左右手坐标系
   if (comToCenterDirection.dot(thirdPrincipalComponent) < 0) {
-    // 翻转第二和第三主成分
     transformMatrix.elements[4] = -eigenVectors[1].vector[0]
     transformMatrix.elements[5] = -eigenVectors[1].vector[1]
     transformMatrix.elements[6] = -eigenVectors[1].vector[2]
@@ -252,11 +251,9 @@ function captureNormals() {
 
 }
 
-
 export {
   captureNormals,
   computeOffsets,
   useModifyCSM,
   useModifyMaterial,
-
 }

@@ -67,6 +67,7 @@ function Gem() {
     uReflective: new Uniform(0.2),
     uEnvRotation: new Uniform(0),
     uEnvMapRotationQuat: new Uniform(new Quaternion()),
+
   }), [])
 
   useControls('gem', {

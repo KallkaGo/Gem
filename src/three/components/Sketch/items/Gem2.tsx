@@ -1,6 +1,7 @@
 import { useEnvironment, useGLTF } from '@react-three/drei'
-import { useFrame, useThree } from '@react-three/fiber'
+import { useThree } from '@react-three/fiber'
 import { computeOffsets } from '@utils/tools'
+import { useControls } from 'leva'
 import { useEffect, useMemo } from 'react'
 import { Color, CubeCamera, DoubleSide, HalfFloatType, LinearMipmapLinearFilter, Matrix4, Mesh, NearestFilter, Scene, ShaderMaterial, Texture, Uniform, Vector3, Vector4, WebGLCubeRenderTarget } from 'three'
 import RES from '../../RES'
@@ -18,7 +19,7 @@ function Gem2() {
 
   const gl = useThree(state => state.gl)
 
-  const cubeRT = useMemo(() => new WebGLCubeRenderTarget(512, {
+  const cubeRT = useMemo(() => new WebGLCubeRenderTarget(1024, {
     generateMipmaps: false,
     minFilter: NearestFilter,
     magFilter: NearestFilter,
@@ -64,25 +65,25 @@ function Gem2() {
     gammaFactor: new Uniform(1),
     envMapRotation: new Uniform(0),
     envMapRotationQuat: new Uniform(new Vector4(0, 0, 0, 1)),
-    reflectivity: new Uniform(0),
+    reflectivity: new Uniform(0.1),
     transmissionMode: new Uniform(2),
     envMap: new Uniform(envMap),
     bounces: new Uniform(8),
     centerOffset: new Uniform(new Vector3(0, 0, 0)),
     modelOffsetMatrix: new Uniform(new Matrix4()),
     modelOffsetMatrixInv: new Uniform(new Matrix4()),
-    tCubeMapNormals: new Uniform(cubeRT.texture),
-    transmissionSamplerMap: new Uniform(new Texture()),
+    tCubeMapNormals: new Uniform(null),
+    transmissionSamplerMap: new Uniform(null),
     transmission: new Uniform(0),
     colorCorrection: new Uniform(new Vector3(1, 1, 1)),
     boostFactors: new Uniform(new Vector3(1, 1, 1)),
     absorptionFactor: new Uniform(1),
     squashFactor: new Uniform(0.98),
     refractiveIndex: new Uniform(2.6),
-    rIndexDelta: new Uniform(0.1),
+    rIndexDelta: new Uniform(0),
     radius: new Uniform(1),
     geometryFactor: new Uniform(0.5),
-    color: new Uniform(new Color('#ff009d')),
+    color: new Uniform(new Color('#ffffff')),
   }), [])
 
   const diamondMaterial = useMemo(() => new ShaderMaterial({
@@ -91,6 +92,15 @@ function Gem2() {
     uniforms: diamondUniforms,
     transparent: true,
   }), [])
+
+  useControls('Color', {
+    color: {
+      value: '#ffffff',
+      onChange: (value) => {
+        diamondUniforms.color.value.set(value)
+      },
+    },
+  })
 
   useEffect(() => {
     const mesh = gltf.scene.children[0] as Mesh

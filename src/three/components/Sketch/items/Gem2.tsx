@@ -2,8 +2,8 @@ import { useEnvironment, useGLTF } from '@react-three/drei'
 import { useThree } from '@react-three/fiber'
 import { computeOffsets } from '@utils/tools'
 import { useControls } from 'leva'
-import { useEffect, useMemo } from 'react'
-import { Color, CubeCamera, DoubleSide, HalfFloatType, LinearMipmapLinearFilter, Matrix4, Mesh, NearestFilter, Scene, ShaderMaterial, Texture, Uniform, Vector3, Vector4, WebGLCubeRenderTarget } from 'three'
+import { useEffect, useMemo, useRef } from 'react'
+import { Color, CubeCamera, DoubleSide, Euler, HalfFloatType, LinearMipmapLinearFilter, Matrix4, Mesh, NearestFilter, Quaternion, Scene, ShaderMaterial, Uniform, Vector3, WebGLCubeRenderTarget } from 'three'
 import RES from '../../RES'
 import captureFragmentShader from '../shader/captureNormal/fragment.glsl'
 import captureVertexShader from '../shader/captureNormal/vertex.glsl'
@@ -16,6 +16,13 @@ function Gem2() {
   const envMap = useEnvironment({ files: RES.textures.env_gem })
   envMap.generateMipmaps = true
   envMap.minFilter = LinearMipmapLinearFilter
+
+  const baseParams = useRef({
+    envRotationX: 0,
+    envRotationY: 0,
+    envRotationZ: 0,
+    euler: new Euler(0, 0, 0),
+  })
 
   const gl = useThree(state => state.gl)
 
@@ -36,6 +43,9 @@ function Gem2() {
 
   const captureMaterial = useMemo(() => {
     return new ShaderMaterial({
+      defines: {
+        OPTIMIZED_REFRACTION: '1',
+      },
       vertexShader: captureVertexShader,
       fragmentShader: captureFragmentShader,
       uniforms: {
@@ -64,11 +74,11 @@ function Gem2() {
     envMapIntensity: new Uniform(1.3),
     gammaFactor: new Uniform(1),
     envMapRotation: new Uniform(0),
-    envMapRotationQuat: new Uniform(new Vector4(0, 0, 0, 1)),
+    envMapRotationQuat: new Uniform(new Quaternion()),
     reflectivity: new Uniform(0.1),
     transmissionMode: new Uniform(2),
     envMap: new Uniform(envMap),
-    bounces: new Uniform(8),
+    bounces: new Uniform(5),
     centerOffset: new Uniform(new Vector3(0, 0, 0)),
     modelOffsetMatrix: new Uniform(new Matrix4()),
     modelOffsetMatrixInv: new Uniform(new Matrix4()),
@@ -80,7 +90,7 @@ function Gem2() {
     absorptionFactor: new Uniform(1),
     squashFactor: new Uniform(0.98),
     refractiveIndex: new Uniform(2.6),
-    rIndexDelta: new Uniform(0),
+    rIndexDelta: new Uniform(0.012),
     radius: new Uniform(1),
     geometryFactor: new Uniform(0.5),
     color: new Uniform(new Color('#ffffff')),
@@ -93,11 +103,121 @@ function Gem2() {
     transparent: true,
   }), [])
 
-  useControls('Color', {
+  useControls('Gem', {
     color: {
       value: '#ffffff',
       onChange: (value) => {
         diamondUniforms.color.value.set(value)
+      },
+    },
+    gammaFactor: {
+      value: diamondUniforms.gammaFactor.value,
+      min: 0.1,
+      max: 4,
+      onChange: (value) => {
+        diamondUniforms.gammaFactor.value = value
+      },
+    },
+    dispersion: {
+      value: diamondUniforms.rIndexDelta.value,
+      min: 0.0,
+      max: 0.1,
+      step: 0.01,
+      onChange: (value) => {
+        diamondUniforms.rIndexDelta.value = value
+      },
+    },
+    absorption: {
+      value: diamondUniforms.absorptionFactor.value,
+      min: 0,
+      max: 15,
+      onChange: (value) => {
+        diamondUniforms.absorptionFactor.value = value
+      },
+    },
+    transmission: {
+      value: diamondUniforms.transmission.value,
+      min: 0,
+      max: 1,
+      onChange: (value) => {
+        diamondUniforms.transmission.value = value
+      },
+    },
+    envIntensity: {
+      value: diamondUniforms.envMapIntensity.value,
+      min: 0,
+      max: 2,
+      onChange: (value) => {
+        diamondUniforms.envMapIntensity.value = value
+      },
+    },
+    refractiveIndex: {
+      value: diamondUniforms.refractiveIndex.value,
+      min: 1,
+      max: 3,
+      onChange: (value) => {
+        diamondUniforms.refractiveIndex.value = value
+      },
+    },
+    rayBounces: {
+      value: diamondUniforms.bounces.value,
+      min: 0,
+      max: 10,
+      step: 1,
+      onChange: (value) => {
+        diamondUniforms.bounces.value = value
+      },
+    },
+    boostFactor: {
+      value: diamondUniforms.boostFactors.value.toArray(),
+      onChange: (value) => {
+        diamondUniforms.boostFactors.value.fromArray(value)
+      },
+    },
+    envRotation: {
+      value: diamondUniforms.envMapRotation.value,
+      min: -Math.PI,
+      max: Math.PI,
+      onChange: (value) => {
+        diamondUniforms.envMapRotation.value = value
+      },
+    },
+    envRotationX: {
+      value: baseParams.current.envRotationX,
+      min: -Math.PI,
+      max: Math.PI,
+      onChange: (value) => {
+        baseParams.current.envRotationX = value
+        baseParams.current.euler.set(value, baseParams.current.envRotationY, baseParams.current.envRotationZ)
+        diamondUniforms.envMapRotationQuat.value.setFromEuler(baseParams.current.euler)
+      },
+    },
+    envRotationY: {
+      value: baseParams.current.envRotationY,
+      min: -Math.PI,
+      max: Math.PI,
+      onChange: (value) => {
+        baseParams.current.envRotationY = value
+        baseParams.current.euler.set(baseParams.current.envRotationX, value, baseParams.current.envRotationZ)
+        diamondUniforms.envMapRotationQuat.value.setFromEuler(baseParams.current.euler)
+      },
+    },
+    envRotationZ: {
+      value: baseParams.current.envRotationZ,
+      min: -Math.PI,
+      max: Math.PI,
+      onChange: (value) => {
+        baseParams.current.envRotationZ = value
+        baseParams.current.euler.set(baseParams.current.envRotationX, baseParams.current.envRotationY, value)
+        diamondUniforms.envMapRotationQuat.value.setFromEuler(baseParams.current.euler)
+      },
+    },
+    reflectivity: {
+      value: diamondUniforms.reflectivity.value,
+      min: 0,
+      max: 2,
+      onChange: (value) => {
+        diamondUniforms.reflectivity.value = value
       },
     },
   })

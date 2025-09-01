@@ -220,6 +220,20 @@ function Gem2() {
         diamondUniforms.reflectivity.value = value
       },
     },
+    poissonSample: {
+      value: false,
+      min: 0,
+      max: 1,
+      onChange: (value) => {
+        if (value) {
+          diamondMaterial.defines.POISSONSAMPLE = value
+        }
+        else {
+          delete diamondMaterial.defines.POISSONSAMPLE
+        }
+        diamondMaterial.needsUpdate = true
+      },
+    },
   })
 
   useEffect(() => {

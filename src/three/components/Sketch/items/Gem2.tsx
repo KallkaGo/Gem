@@ -236,7 +236,7 @@ function Gem2() {
         }
         diamondMaterial.needsUpdate = true
       },
-    },
+    }
   })
 
   useEffect(() => {

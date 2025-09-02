@@ -2,8 +2,9 @@ import { OrbitControls, useCubeTexture } from '@react-three/drei'
 import { useThree } from '@react-three/fiber'
 import { Bloom, EffectComposer, ToneMapping } from '@react-three/postprocessing'
 import { useInteractStore, useLoadedStore } from '@utils/Store'
+import { useControls } from 'leva'
 import { ToneMappingMode } from 'postprocessing'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { UnsignedByteType } from 'three'
 import RES from '../RES'
 import Gem2 from './items/Gem2'
@@ -14,6 +15,10 @@ function Sketch() {
   const controlDom = useInteractStore(state => state.controlDom)
 
   const scene = useThree(state => state.scene)
+
+  const [isEnabled, setIsEnabled] = useState(true)
+
+  useControls('PostProcessing', { enabled: { value: isEnabled, onChange: setIsEnabled } })
 
   useEffect(() => {
     scene.background = envTex
@@ -29,6 +34,7 @@ function Sketch() {
       <EffectComposer
         disableNormalPass
         frameBufferType={UnsignedByteType}
+        enabled={isEnabled}
       >
         <Bloom
           mipmapBlur

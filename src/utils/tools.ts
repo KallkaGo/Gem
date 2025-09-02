@@ -71,7 +71,6 @@ function createTransformMatrix(eigenVectors: Array<{ eigenvalue: number, vector:
   transformMatrix.elements[14] = 0
   transformMatrix.elements[15] = 1
 
-  // 调整坐标系方向
   const comToCenterDirection = new Vector3()
   comToCenterDirection.copy(geometryProperties.com).sub(geometryProperties.center)
   comToCenterDirection.normalize()

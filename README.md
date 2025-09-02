@@ -1,4 +1,4 @@
 # Gem
 Webgl Diamond Shader
 
-![](.\assets\preview.png)
+![image](assets/preview.png)

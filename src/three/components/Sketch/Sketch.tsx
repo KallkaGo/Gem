@@ -32,7 +32,7 @@ function Sketch() {
       >
         <Bloom
           mipmapBlur
-          luminanceThreshold={0.5}
+          luminanceThreshold={0.65}
           intensity={2}
           radius={0.5}
         >

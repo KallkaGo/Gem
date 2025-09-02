@@ -1,7 +1,8 @@
 import { OrbitControls, useCubeTexture } from '@react-three/drei'
 import { useThree } from '@react-three/fiber'
-import { Bloom, EffectComposer } from '@react-three/postprocessing'
+import { Bloom, EffectComposer, ToneMapping } from '@react-three/postprocessing'
 import { useInteractStore, useLoadedStore } from '@utils/Store'
+import { ToneMappingMode } from 'postprocessing'
 import { useEffect } from 'react'
 import { UnsignedByteType } from 'three'
 import RES from '../RES'
@@ -31,11 +32,12 @@ function Sketch() {
       >
         <Bloom
           mipmapBlur
-          luminanceThreshold={0.7}
+          luminanceThreshold={0.5}
           intensity={2}
           radius={0.5}
         >
         </Bloom>
+        <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
       </EffectComposer>
     </>
   )

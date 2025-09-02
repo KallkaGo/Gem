@@ -34,6 +34,7 @@ uniform int transmissionMode;
 uniform bool useInclusion;
 uniform sampler2D envMap;
 uniform int bounces;
+uniform vec2 resolution;
 
 #define MODEL_OFFSET_MATRIX  modelOffsetMatrix
 #define INV_MODEL_OFFSET_MATRIX  modelOffsetMatrixInv
@@ -180,10 +181,82 @@ vec3 intersect(vec3 rayOrigin, vec3 rayDirection, inout vec3 hitNormal) {
   return hitPoint;
 }
 
+// vec3 getRefractionColor(vec3 origin, vec3 direction, vec3 normal) {
+//   vec3 outColor = vec3(0.);
+//   const float n1 = 1.;
+//   const float epsilon = 1e-3;
+//   float f0 = (2.4 - n1) / (2.4 + n1);
+//   f0 *= f0;
+//   vec3 attenuationFactor = vec3(1.);
+//   vec3 newDirection = refract(direction, normal, n1 / refractiveIndex);
+//   vec3 brdfRefracted = BRDF_Specular_GGX_Environment(newDirection, -normal, vec3(f0), 0.);
+//   attenuationFactor *= (vec3(1.) - brdfRefracted);
+//   int count = 0;
+//   mat4 invModelOffsetMatrix = INV_MODEL_OFFSET_MATRIX;
+//   newDirection = normalize((invModelOffsetMatrix * vec4(newDirection, 0.)).xyz);
+//   origin = (invModelOffsetMatrix * vec4(origin, 1.)).xyz;
+//   for(int i = 0; i < RAY_BOUNCES; i++) {
+//     vec3 hitNormal;
+//     vec3 intersectedPos = intersect(origin, newDirection, hitNormal);
+//     vec3 dist = intersectedPos - origin;
+//     vec3 d = normalize(intersectedPos - CENTER_OFFSET);
+//     vec3 inclusionColor = vec3(1.);
+//     vec3 inclusionNormal = vec3(1.);
+//     vec3 mappedNormal = getNormalDistance(d).rgb;
+//     mappedNormal = 2. * mappedNormal - 1.;
+//     mappedNormal = -normalize(mappedNormal);
+//     float roughnessVol = 0.;
+//     //  inclusionsColorNormalTag
+
+//     //  inclusionsTag2
+//     float r = length(dist) / radius * absorptionFactor;
+//     attenuationFactor *= exp(-r * (1. - color));
+
+//     origin = intersectedPos;
+//     vec3 origin2 = (MODEL_OFFSET_MATRIX * vec4(intersectedPos, 1)).xyz;
+//     vec3 oldDir = newDirection;
+//     newDirection = refract(newDirection, mappedNormal, refractiveIndex / n1);
+//     if(dot(newDirection, newDirection) < epsilon) {
+//       newDirection = reflect(oldDir, mappedNormal);
+//       if(i == RAY_BOUNCES - 1) {
+//         vec3 brdfReflected = BRDF_Specular_GGX_Environment(-oldDir, mappedNormal, vec3(f0), 0.);
+//         vec3 d1 = mat3(MODEL_OFFSET_MATRIX) * oldDir;
+//         d1 = normalize(d1);
+//         float cosT = 1. - dot(direction, d1);
+//         outColor += ((transmission > 0. && cosT < transmission) ? SampleSpecularContributionRef(origin2 + 0.5 * d1 * cosT, i).rgb : SampleSpecularContribution(oldDir, roughnessVol).rgb) * attenuationFactor * colorCorrection * boostFactors * (vec3(1.) - min(vec3(1.), brdfReflected));
+//         outColor *= inclusionColor;
+//       }
+
+//     } else {
+//       vec3 brdfRefracted = vec3(1.) - min(vec3(1.), BRDF_Specular_GGX_Environment(newDirection, -mappedNormal, vec3(f0), 0.));
+//       vec3 d1 = normalize(mat3(MODEL_OFFSET_MATRIX) * newDirection);
+//       float cosT = 1. - dot(direction, d1);
+//       if(transmission > 0. && cosT < transmission) {
+//         vec3 specRefColor = SampleSpecularContributionRef(origin2 + 0.5 * d1 * cosT, i).rgb * brdfRefracted * attenuationFactor * colorCorrection * boostFactors;
+//         specRefColor *= inclusionColor;
+//         outColor += specRefColor;
+//       } else {
+//         vec3 dir0 = newDirection;
+//         vec3 dir1 = refract(oldDir, mappedNormal, (refractiveIndex + rIndexDelta) / n1);
+//         vec3 dir2 = refract(oldDir, mappedNormal, (refractiveIndex - rIndexDelta) / n1);
+//         vec3 specRefColor = vec3(SampleSpecularContribution(dir1, roughnessVol).r, SampleSpecularContribution(dir0, roughnessVol).g, SampleSpecularContribution(dir2, roughnessVol).b) * brdfRefracted * attenuationFactor * colorCorrection * boostFactors;
+//         specRefColor *= inclusionColor;
+//         outColor += specRefColor;
+//       }
+//       newDirection = reflect(oldDir, mappedNormal);
+//       vec3 brdfReflected = BRDF_Specular_GGX_Environment(newDirection, mappedNormal, vec3(f0), 0.);
+//       attenuationFactor *= brdfReflected * boostFactors;
+//       count++;
+//     }
+
+//   }
+//   return outColor;
+// }
+
 vec3 getRefractionColor(vec3 origin, vec3 direction, vec3 normal) {
   vec3 outColor = vec3(0.);
   const float n1 = 1.;
-  const float epsilon = 1e-3;
+  const float epsilon = 1e-4;
   float f0 = (2.4 - n1) / (2.4 + n1);
   f0 *= f0;
   vec3 attenuationFactor = vec3(1.);
@@ -194,6 +267,7 @@ vec3 getRefractionColor(vec3 origin, vec3 direction, vec3 normal) {
   mat4 invModelOffsetMatrix = INV_MODEL_OFFSET_MATRIX;
   newDirection = normalize((invModelOffsetMatrix * vec4(newDirection, 0.)).xyz);
   origin = (invModelOffsetMatrix * vec4(origin, 1.)).xyz;
+
   for(int i = 0; i < RAY_BOUNCES; i++) {
     vec3 hitNormal;
     vec3 intersectedPos = intersect(origin, newDirection, hitNormal);
@@ -205,286 +279,93 @@ vec3 getRefractionColor(vec3 origin, vec3 direction, vec3 normal) {
     mappedNormal = 2. * mappedNormal - 1.;
     mappedNormal = -normalize(mappedNormal);
     float roughnessVol = 0.;
-    //  inclusionsColorNormalTag
 
+    //  inclusionsColorNormalTag
     //  inclusionsTag2
-    float r = length(dist) / radius * absorptionFactor;
-    attenuationFactor *= exp(-r * (1. - color));
+
+    float rawR = length(dist) / radius * absorptionFactor;
+    float r = clamp(rawR, 0.0, 6.0);
+    vec3 absorptionCoeff = r * (1. - color);
+    absorptionCoeff = clamp(absorptionCoeff, 0.0, 5.0);
+    vec3 newAttenuation = exp(-absorptionCoeff);
+    newAttenuation = max(newAttenuation, vec3(0.02));
+    attenuationFactor *= newAttenuation;
 
     origin = intersectedPos;
     vec3 origin2 = (MODEL_OFFSET_MATRIX * vec4(intersectedPos, 1)).xyz;
     vec3 oldDir = newDirection;
     newDirection = refract(newDirection, mappedNormal, refractiveIndex / n1);
-    if(dot(newDirection, newDirection) < epsilon) {
+
+    float refractLength = length(newDirection);
+    if(refractLength < epsilon) {
       newDirection = reflect(oldDir, mappedNormal);
       if(i == RAY_BOUNCES - 1) {
         vec3 brdfReflected = BRDF_Specular_GGX_Environment(-oldDir, mappedNormal, vec3(f0), 0.);
         vec3 d1 = mat3(MODEL_OFFSET_MATRIX) * oldDir;
         d1 = normalize(d1);
         float cosT = 1. - dot(direction, d1);
-        outColor += ((transmission > 0. && cosT < transmission) ? SampleSpecularContributionRef(origin2 + 0.5 * d1 * cosT, i).rgb : SampleSpecularContribution(oldDir, roughnessVol).rgb) * attenuationFactor * colorCorrection * boostFactors * (vec3(1.) - min(vec3(1.), brdfReflected));
+
+        vec3 contribution = ((transmission > 0. && cosT < transmission) ? SampleSpecularContributionRef(origin2 + 0.5 * d1 * cosT, i).rgb : SampleSpecularContribution(oldDir, roughnessVol).rgb);
+        contribution = clamp(contribution, 0.0, 2.0);
+
+        outColor += contribution * attenuationFactor * colorCorrection * boostFactors * (vec3(1.) - min(vec3(1.), brdfReflected));
         outColor *= inclusionColor;
       }
-
     } else {
+      newDirection = normalize(newDirection);
+
       vec3 brdfRefracted = vec3(1.) - min(vec3(1.), BRDF_Specular_GGX_Environment(newDirection, -mappedNormal, vec3(f0), 0.));
       vec3 d1 = normalize(mat3(MODEL_OFFSET_MATRIX) * newDirection);
       float cosT = 1. - dot(direction, d1);
+
       if(transmission > 0. && cosT < transmission) {
         vec3 specRefColor = SampleSpecularContributionRef(origin2 + 0.5 * d1 * cosT, i).rgb * brdfRefracted * attenuationFactor * colorCorrection * boostFactors;
+
+        specRefColor = clamp(specRefColor, 0.0, 2.0);
+
         specRefColor *= inclusionColor;
         outColor += specRefColor;
       } else {
         vec3 dir0 = newDirection;
         vec3 dir1 = refract(oldDir, mappedNormal, (refractiveIndex + rIndexDelta) / n1);
         vec3 dir2 = refract(oldDir, mappedNormal, (refractiveIndex - rIndexDelta) / n1);
+
+        if(length(dir1) < epsilon)
+          dir1 = dir0;
+        if(length(dir2) < epsilon)
+          dir2 = dir0;
+
         vec3 specRefColor = vec3(SampleSpecularContribution(dir1, roughnessVol).r, SampleSpecularContribution(dir0, roughnessVol).g, SampleSpecularContribution(dir2, roughnessVol).b) * brdfRefracted * attenuationFactor * colorCorrection * boostFactors;
+
+        specRefColor = clamp(specRefColor, 0.0, 2.0);
+
         specRefColor *= inclusionColor;
         outColor += specRefColor;
       }
+
       newDirection = reflect(oldDir, mappedNormal);
       vec3 brdfReflected = BRDF_Specular_GGX_Environment(newDirection, mappedNormal, vec3(f0), 0.);
-      attenuationFactor *= brdfReflected * boostFactors;
+
+      vec3 reflectionAtten = clamp(brdfReflected * boostFactors, 0.02, 1.0);
+      attenuationFactor *= reflectionAtten;
+
       count++;
     }
-
   }
-  return outColor;
+
+  return clamp(outColor, 0.0, 4.0);
 }
-
-// vec3 getRefractionColor(vec3 origin, vec3 direction, vec3 normal) {
-//   vec3 outColor = vec3(0.);
-//   const float n1 = 1.;
-//   const float epsilon = 1e-4;
-//   float f0 = (2.4 - n1) / (2.4 + n1);
-//   f0 *= f0;
-//   vec3 attenuationFactor = vec3(1.);
-//   vec3 newDirection = refract(direction, normal, n1 / refractiveIndex);
-//   vec3 brdfRefracted = BRDF_Specular_GGX_Environment(newDirection, -normal, vec3(f0), 0.);
-//   attenuationFactor *= (vec3(1.) - brdfRefracted);
-//   int count = 0;
-//   mat4 invModelOffsetMatrix = INV_MODEL_OFFSET_MATRIX;
-//   newDirection = normalize((invModelOffsetMatrix * vec4(newDirection, 0.)).xyz);
-//   origin = (invModelOffsetMatrix * vec4(origin, 1.)).xyz;
-
-//   for(int i = 0; i < RAY_BOUNCES; i++) {
-//     vec3 hitNormal;
-//     vec3 intersectedPos = intersect(origin, newDirection, hitNormal);
-//     vec3 dist = intersectedPos - origin;
-//     vec3 d = normalize(intersectedPos - CENTER_OFFSET);
-//     vec3 inclusionColor = vec3(1.);
-//     vec3 inclusionNormal = vec3(1.);
-//     vec3 mappedNormal = getNormalDistance(d).rgb;
-//     mappedNormal = 2. * mappedNormal - 1.;
-//     mappedNormal = -normalize(mappedNormal);
-//     float roughnessVol = 0.;
-
-//     //  inclusionsColorNormalTag
-//     //  inclusionsTag2
-
-//     float rawR = length(dist) / radius * absorptionFactor;
-//     float r = clamp(rawR, 0.0, 6.0);
-//     vec3 absorptionCoeff = r * (1. - color);
-//     absorptionCoeff = clamp(absorptionCoeff, 0.0, 5.0);
-//     vec3 newAttenuation = exp(-absorptionCoeff);
-//     newAttenuation = max(newAttenuation, vec3(0.02));
-//     attenuationFactor *= newAttenuation;
-
-//     origin = intersectedPos;
-//     vec3 origin2 = (MODEL_OFFSET_MATRIX * vec4(intersectedPos, 1)).xyz;
-//     vec3 oldDir = newDirection;
-//     newDirection = refract(newDirection, mappedNormal, refractiveIndex / n1);
-
-//     float refractLength = length(newDirection);
-//     if(refractLength < epsilon) {
-//       newDirection = reflect(oldDir, mappedNormal);
-//       if(i == RAY_BOUNCES - 1) {
-//         vec3 brdfReflected = BRDF_Specular_GGX_Environment(-oldDir, mappedNormal, vec3(f0), 0.);
-//         vec3 d1 = mat3(MODEL_OFFSET_MATRIX) * oldDir;
-//         d1 = normalize(d1);
-//         float cosT = 1. - dot(direction, d1);
-
-//         vec3 contribution = ((transmission > 0. && cosT < transmission) ? SampleSpecularContributionRef(origin2 + 0.5 * d1 * cosT, i).rgb : SampleSpecularContribution(oldDir, roughnessVol).rgb);
-//         contribution = clamp(contribution, 0.0, 2.0);
-
-//         outColor += contribution * attenuationFactor * colorCorrection * boostFactors * (vec3(1.) - min(vec3(1.), brdfReflected));
-//         outColor *= inclusionColor;
-//       }
-//     } else {
-//       newDirection = normalize(newDirection);
-
-//       vec3 brdfRefracted = vec3(1.) - min(vec3(1.), BRDF_Specular_GGX_Environment(newDirection, -mappedNormal, vec3(f0), 0.));
-//       vec3 d1 = normalize(mat3(MODEL_OFFSET_MATRIX) * newDirection);
-//       float cosT = 1. - dot(direction, d1);
-
-//       if(transmission > 0. && cosT < transmission) {
-//         vec3 specRefColor = SampleSpecularContributionRef(origin2 + 0.5 * d1 * cosT, i).rgb * brdfRefracted * attenuationFactor * colorCorrection * boostFactors;
-
-//         specRefColor = clamp(specRefColor, 0.0, 2.0);
-
-//         specRefColor *= inclusionColor;
-//         outColor += specRefColor;
-//       } else {
-//         vec3 dir0 = newDirection;
-//         vec3 dir1 = refract(oldDir, mappedNormal, (refractiveIndex + rIndexDelta) / n1);
-//         vec3 dir2 = refract(oldDir, mappedNormal, (refractiveIndex - rIndexDelta) / n1);
-
-//         if(length(dir1) < epsilon)
-//           dir1 = dir0;
-//         if(length(dir2) < epsilon)
-//           dir2 = dir0;
-
-//         vec3 specRefColor = vec3(SampleSpecularContribution(dir1, roughnessVol).r, SampleSpecularContribution(dir0, roughnessVol).g, SampleSpecularContribution(dir2, roughnessVol).b) * brdfRefracted * attenuationFactor * colorCorrection * boostFactors;
-
-//         specRefColor = clamp(specRefColor, 0.0, 2.0);
-
-//         specRefColor *= inclusionColor;
-//         outColor += specRefColor;
-//       }
-
-//       newDirection = reflect(oldDir, mappedNormal);
-//       vec3 brdfReflected = BRDF_Specular_GGX_Environment(newDirection, mappedNormal, vec3(f0), 0.);
-
-//       vec3 reflectionAtten = clamp(brdfReflected * boostFactors, 0.02, 1.0);
-//       attenuationFactor *= reflectionAtten;
-
-//       count++;
-//     }
-//   }
-
-//   return clamp(outColor, 0.0, 4.0);
-// }
-
-// vec3 getRefractionColorOPT(vec3 origin, vec3 direction, vec3 normal) {
-//   vec3 outColor = vec3(0.);
-//   const float n1 = 1.;
-//   const float epsilon = 1e-4;
-//   const float minContribution = 0.001; // 最小贡献阈值
-//   float f0 = (2.4 - n1) / (2.4 + n1);
-//   f0 *= f0;
-//   vec3 attenuationFactor = vec3(1.);
-//   vec3 newDirection = refract(direction, normal, n1 / refractiveIndex);
-//   vec3 brdfRefracted = BRDF_Specular_GGX_Environment(newDirection, -normal, vec3(f0), 0.);
-//   attenuationFactor *= (vec3(1.) - brdfRefracted);
-//   int count = 0;
-//   mat4 invModelOffsetMatrix = INV_MODEL_OFFSET_MATRIX;
-//   newDirection = normalize((invModelOffsetMatrix * vec4(newDirection, 0.)).xyz);
-//   origin = (invModelOffsetMatrix * vec4(origin, 1.)).xyz;
-//   for(int i = 0; i < RAY_BOUNCES; i++) {
-//     // 早期终止 - 如果贡献太小则停止
-//     if(length(attenuationFactor) < minContribution) {
-//       break;
-//     }
-//     vec3 hitNormal;
-//     vec3 intersectedPos = intersect(origin, newDirection, hitNormal);
-//     vec3 dist = intersectedPos - origin;
-//     vec3 d = normalize(intersectedPos - CENTER_OFFSET);
-//     vec3 inclusionColor = vec3(1.);
-//     vec3 inclusionNormal = vec3(1.);
-//     vec3 mappedNormal = getNormalDistance(d).rgb;
-//     mappedNormal = 2. * mappedNormal - 1.;
-//     mappedNormal = -normalize(mappedNormal);
-//     float roughnessVol = 0.;
-//     //  inclusionsColorNormalTag
-//     //  inclusionsTag2
-//     float r = length(dist) / radius * absorptionFactor;
-//     attenuationFactor *= exp(-r * (1. - color));
-//     origin = intersectedPos;
-//     vec3 origin2 = (MODEL_OFFSET_MATRIX * vec4(intersectedPos, 1)).xyz;
-//     vec3 oldDir = newDirection;
-
-//     // 改进的折射计算
-//     float cosTheta = dot(-oldDir, mappedNormal);
-//     float sinTheta2 = 1.0 - cosTheta * cosTheta;
-//     float etaRatio = refractiveIndex / n1;
-//     bool totalInternalReflection = (sinTheta2 > 1.0 / (etaRatio * etaRatio));
-
-//     float bounceAttenuation = pow(0.85, float(i));
-
-//     if(totalInternalReflection) {
-//       // 全反射
-//       newDirection = reflect(oldDir, mappedNormal);
-
-//       if(i == RAY_BOUNCES - 1) {
-//         vec3 brdfReflected = BRDF_Specular_GGX_Environment(-oldDir, mappedNormal, vec3(f0), 0.);
-//         vec3 d1 = mat3(MODEL_OFFSET_MATRIX) * oldDir;
-//         d1 = normalize(d1);
-//         float cosT = 1. - dot(direction, d1);
-
-//         vec3 reflectionContrib = ((transmission > 0. && cosT < transmission) ? SampleSpecularContributionRef(origin2 + 0.5 * d1 * cosT, i).rgb : SampleSpecularContribution(oldDir, roughnessVol).rgb);
-
-//         outColor += reflectionContrib * attenuationFactor * colorCorrection * boostFactors *
-//           (vec3(1.) - min(vec3(1.), brdfReflected)) * bounceAttenuation;
-//         outColor *= inclusionColor;
-//       }
-//     } else {
-//       // 继续折射
-//       newDirection = refract(oldDir, mappedNormal, etaRatio);
-
-//       // 二次检查折射结果
-//       if(length(newDirection) < epsilon) {
-//         newDirection = reflect(oldDir, mappedNormal);
-//       }
-
-//       vec3 brdfRefracted = vec3(1.) - min(vec3(1.), BRDF_Specular_GGX_Environment(newDirection, -mappedNormal, vec3(f0), 0.));
-//       vec3 d1 = normalize(mat3(MODEL_OFFSET_MATRIX) * newDirection);
-//       float cosT = 1. - dot(direction, d1);
-
-//       if(transmission > 0. && cosT < transmission) {
-//         vec3 specRefColor = SampleSpecularContributionRef(origin2 + 0.5 * d1 * cosT, i).rgb *
-//           brdfRefracted * attenuationFactor * colorCorrection * boostFactors * bounceAttenuation;
-//         specRefColor *= inclusionColor;
-//         outColor += specRefColor;
-//       } else {
-//         vec3 dir0 = newDirection;
-
-//         // 改进的色散计算
-//         vec3 dir1 = refract(oldDir, mappedNormal, (refractiveIndex + rIndexDelta) / n1);
-//         vec3 dir2 = refract(oldDir, mappedNormal, (refractiveIndex - rIndexDelta) / n1);
-
-//         // 如果色散方向计算失败，使用主方向
-//         if(length(dir1) < epsilon)
-//           dir1 = dir0;
-//         if(length(dir2) < epsilon)
-//           dir2 = dir0;
-
-//         // 添加轻微的随机化来减少带状伪影
-//         float colorNoise = fract(sin(dot(origin2.xy, vec2(12.9898, 78.233))) * 43758.5453) * 0.02;
-//         vec3 specRefColor = vec3(SampleSpecularContribution(dir1, roughnessVol).r, SampleSpecularContribution(dir0, roughnessVol).g, SampleSpecularContribution(dir2, roughnessVol).b) * brdfRefracted * attenuationFactor * colorCorrection * boostFactors * bounceAttenuation;
-
-//         // 应用轻微的颜色噪声
-//         specRefColor *= (1.0 + colorNoise);
-//         specRefColor *= inclusionColor;
-//         outColor += specRefColor;
-//       }
-
-//       // 反射分量计算
-//       newDirection = reflect(oldDir, mappedNormal);
-//       vec3 brdfReflected = BRDF_Specular_GGX_Environment(newDirection, mappedNormal, vec3(f0), 0.);
-//       attenuationFactor *= brdfReflected * boostFactors * bounceAttenuation;
-//     }
-//     // 添加渐进衰减以防止过度累积
-//     attenuationFactor *= .5;
-//   }
-
-//   return outColor;
-// }
 
 // const vec2 poissonDisk[8] = vec2[](vec2(-0.7071, 0.7071), vec2(-0.0000, -0.8750), vec2(0.5303, 0.5303), vec2(-0.6250, -0.0000), vec2(0.3536, -0.3536), vec2(-0.3536, 0.3536), vec2(0.8750, 0.0000), vec2(0.0000, 0.6250));
 
-const  vec2 poissonDisk[4] = vec2[](
-  vec2( -0.94201624, -0.39906216 ),
-  vec2( 0.94558609, -0.76890725 ),
-  vec2( -0.094184101, -0.92938870 ),
-  vec2( 0.34495938, 0.29387760 )
-);
+const vec2 poissonDisk[4] = vec2[](vec2(-0.94201624, -0.39906216), vec2(0.94558609, -0.76890725), vec2(-0.094184101, -0.92938870), vec2(0.34495938, 0.29387760));
 
 vec3 getRefractionColorPoissonSample(vec3 origin, vec3 direction, vec3 normal) {
   vec3 totalColor = vec3(0.0);
   const int sampleCount = 4;
 
   for(int i = 0; i < sampleCount; i++) {
-    vec2 offset = poissonDisk[i] * 0.002;
+    vec2 offset = poissonDisk[i] * (1. / resolution ) * 5.;
 
     vec3 jitteredDirection = normalize(direction + vec3(offset.x, offset.y, offset.x * 0.5));
 

@@ -1,9 +1,9 @@
 import { useEnvironment, useGLTF } from '@react-three/drei'
-import { useThree } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import { computeOffsets } from '@utils/tools'
 import { useControls } from 'leva'
 import { useEffect, useMemo, useRef } from 'react'
-import { Color, CubeCamera, DoubleSide, Euler, HalfFloatType, LinearMipmapLinearFilter, Matrix4, Mesh, NearestFilter, Quaternion, Scene, ShaderMaterial, Uniform, Vector3, WebGLCubeRenderTarget } from 'three'
+import { Color, CubeCamera, DoubleSide, Euler, HalfFloatType, LinearMipmapLinearFilter, Matrix4, Mesh, NearestFilter, Quaternion, Scene, ShaderMaterial, Uniform, Vector2, Vector3, WebGLCubeRenderTarget } from 'three'
 import RES from '../../RES'
 import captureFragmentShader from '../shader/captureNormal/fragment.glsl'
 import captureVertexShader from '../shader/captureNormal/vertex.glsl'
@@ -93,19 +93,22 @@ function Gem2() {
     rIndexDelta: new Uniform(0.012),
     radius: new Uniform(1),
     geometryFactor: new Uniform(0.5),
-    color: new Uniform(new Color('#ffffff')),
+    color: new Uniform(new Color('#ff0000')),
+    resolution: new Uniform(new Vector2()),
   }), [])
 
   const diamondMaterial = useMemo(() => new ShaderMaterial({
+    defines: {
+      POISSONSAMPLE: true,
+    },
     vertexShader: diamondVertexShader,
     fragmentShader: diamondFragmentShader,
     uniforms: diamondUniforms,
-    transparent: true,
   }), [])
 
   useControls('Gem', {
     color: {
-      value: '#ffffff',
+      value: `#${diamondUniforms.color.value.getHexString()}`,
       onChange: (value) => {
         diamondUniforms.color.value.set(value)
       },
@@ -221,7 +224,7 @@ function Gem2() {
       },
     },
     poissonSample: {
-      value: false,
+      value: true,
       min: 0,
       max: 1,
       onChange: (value) => {
@@ -256,6 +259,11 @@ function Gem2() {
       }
     })
   }, [])
+
+  useFrame((state, delta) => {
+    const dpr = state.gl.getPixelRatio()
+    diamondUniforms.resolution.value.set(innerWidth * dpr, innerHeight * dpr)
+  })
 
   return (
     <primitive

@@ -1,8 +1,7 @@
 import { OrbitControls, useCubeTexture } from '@react-three/drei'
 import { useThree } from '@react-three/fiber'
-import { Bloom, EffectComposer, ToneMapping } from '@react-three/postprocessing'
+import { Bloom, EffectComposer } from '@react-three/postprocessing'
 import { useInteractStore, useLoadedStore } from '@utils/Store'
-import { ToneMappingMode } from 'postprocessing'
 import { useEffect } from 'react'
 import { UnsignedByteType } from 'three'
 import RES from '../RES'
@@ -26,6 +25,18 @@ function Sketch() {
       <OrbitControls domElement={controlDom} />
       <color attach="background" args={['black']} />
       <Gem2 />
+      <EffectComposer
+        disableNormalPass
+        frameBufferType={UnsignedByteType}
+      >
+        <Bloom
+          mipmapBlur
+          luminanceThreshold={0.7}
+          intensity={2}
+          radius={0.5}
+        >
+        </Bloom>
+      </EffectComposer>
     </>
   )
 }

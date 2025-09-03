@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from 'styled-components'
 
 export const GameWrapper = styled.div`
     width: 100%;
@@ -32,4 +32,23 @@ export const GameWrapper = styled.div`
     border-radius:50%;
     border:2px solid #fff;
    }
-`;
+
+   .info {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    color: #ffffffff;
+    width:fit-content;
+    height:30px;
+    line-height:30px;
+    padding:10px;
+    backdrop-filter: blur(10px);
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    a {
+      color: #fff;
+    }
+  }
+`

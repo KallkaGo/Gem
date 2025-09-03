@@ -32,15 +32,22 @@ function Game() {
   }
 
   return (
-      <GameWrapper className="game" ref={gameRef}>
-        <div
-          className="control"
-          ref={controlRef}
-          onPointerDown={e => handlePointerEvent(e, true)}
-          onPointerUp={e => handlePointerEvent(e, false)}
-        >
-        </div>
-      </GameWrapper>
+    <GameWrapper className="game" ref={gameRef}>
+      <div className="info">
+        <span>
+          Diamond Render - by
+          {' '}
+          <a href="https://github.com/KallkaGo">Kallka</a>
+        </span>
+      </div>
+      <div
+        className="control"
+        ref={controlRef}
+        onPointerDown={e => handlePointerEvent(e, true)}
+        onPointerUp={e => handlePointerEvent(e, false)}
+      >
+      </div>
+    </GameWrapper>
   )
 }
 

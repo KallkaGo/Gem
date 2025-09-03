@@ -7,7 +7,6 @@ varying vec3 vViewPosition;
 uniform float radius;
 uniform vec3 centerOffset;
 uniform float transmission;
-uniform vec2 transmissionSamplerSize;
 uniform sampler2D transmissionSamplerMap;
 
 uniform mat4 modelOffsetMatrixInv;
@@ -27,12 +26,9 @@ uniform float absorptionFactor;
 uniform float envMapRotation;
 uniform vec4 envMapRotationQuat;
 uniform float reflectivity;
-uniform int transmissionMode;
-uniform bool useInclusion;
 uniform sampler2D envMap;
 uniform int bounces;
 uniform vec2 resolution;
-
 
 #define MODEL_OFFSET_MATRIX  modelOffsetMatrix
 #define INV_MODEL_OFFSET_MATRIX  modelOffsetMatrixInv
@@ -197,9 +193,7 @@ vec3 getRefractionColor(vec3 origin, vec3 direction, vec3 normal) {
     mappedNormal = 2. * mappedNormal - 1.;
     mappedNormal = -normalize(mappedNormal);
     float roughnessVol = 0.;
-    //  inclusionsColorNormalTag
 
-    //  inclusionsTag2
     float r = length(dist) / radius * absorptionFactor;
     attenuationFactor *= exp(-r * (1. - color));
 
@@ -373,7 +367,6 @@ void main() {
   vec3 reflectionColor = vec3(0.);
   vec3 refractionColor = vec3(0.);
   const float n1 = 1.;
-  const float epsilon = 1e-4;
   float f0 = (2.4 - n1) / (2.4 + n1);
   f0 *= f0;
   vec3 reflectedDirection = reflect(viewVector, normalizedNormal);
@@ -381,18 +374,15 @@ void main() {
   //  inclusionsTag3
 
   vec3 brdfReflected = BRDF_Specular_GGX_Environment(reflectedDirection, normalizedNormal, vec3(f0), 0.);
-  if(transmissionMode == 0 || transmissionMode == 2) {
-    reflectionColor = SampleSpecularReflection(reflectedDirection, roughness).rgb * brdfReflected * reflectivity * 2.;
-  }
 
-  if(transmissionMode == 1 || transmissionMode == 2) {
-    #ifdef POISSONSAMPLE
-    refractionColor = getRefractionColorPoissonSample(vWorldPosition, viewVector, normalizedNormal);
-    #else
-    refractionColor = getRefractionColor(vWorldPosition, viewVector, normalizedNormal);
-    #endif
+  reflectionColor = SampleSpecularReflection(reflectedDirection, roughness).rgb * brdfReflected * reflectivity * 2.;
 
-  }
+  #ifdef POISSONSAMPLE
+  refractionColor = getRefractionColorPoissonSample(vWorldPosition, viewVector, normalizedNormal);
+  #else
+  refractionColor = getRefractionColor(vWorldPosition, viewVector, normalizedNormal);
+  #endif
+
   vec3 diffuseColor = vec3(1.);
 
   //  beforeAccumulation

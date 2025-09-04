@@ -81,7 +81,7 @@ function createTransformMatrix(eigenVectors: Array<{ eigenvalue: number, vector:
     eigenVectors[2].vector[2],
   )
 
-  // 处理左右手坐标系
+  // 确保有一致的朝向（保证手相性）
   if (comToCenterDirection.dot(thirdPrincipalComponent) < 0) {
     transformMatrix.elements[4] = -eigenVectors[1].vector[0]
     transformMatrix.elements[5] = -eigenVectors[1].vector[1]

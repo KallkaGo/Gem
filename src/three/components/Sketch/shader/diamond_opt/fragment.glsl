@@ -180,6 +180,7 @@ vec3 getRefractionColor(vec3 origin, vec3 direction, vec3 normal) {
   attenuationFactor *= (vec3(1.) - brdfRefracted);
   int count = 0;
   mat4 invModelOffsetMatrix = INV_MODEL_OFFSET_MATRIX;
+  // 通过特征变换矩阵和世界矩阵构成的矩阵求逆使得这个方向向量变换到标准化的本地坐标系中，后续进行光线弹射的计算可以最大限度上保证效果
   newDirection = normalize((invModelOffsetMatrix * vec4(newDirection, 0.)).xyz);
   origin = (invModelOffsetMatrix * vec4(origin, 1.)).xyz;
   for(int i = 0; i < RAY_BOUNCES; i++) {

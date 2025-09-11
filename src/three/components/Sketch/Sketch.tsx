@@ -7,7 +7,7 @@ import { ToneMappingMode } from 'postprocessing'
 import { useEffect, useState } from 'react'
 import { UnsignedByteType } from 'three'
 import RES from '../RES'
-import Gem2 from './items/Gem2'
+import Gem2Inc from './items/Gem2Inc'
 
 function Sketch() {
   const envTex = useCubeTexture(RES.textures.cubeEnvMap, { path: '' })
@@ -30,8 +30,8 @@ function Sketch() {
     <>
       <OrbitControls domElement={controlDom} />
       <color attach="background" args={['black']} />
-      <Gem2 />
-      <EffectComposer
+      <Gem2Inc />
+      {/* <EffectComposer
         disableNormalPass
         frameBufferType={UnsignedByteType}
         enabled={isEnabled}
@@ -44,7 +44,7 @@ function Sketch() {
         >
         </Bloom>
         <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
-      </EffectComposer>
+      </EffectComposer> */}
     </>
   )
 }

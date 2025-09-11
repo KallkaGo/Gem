@@ -301,7 +301,7 @@ function Gem2Inc() {
       />
       <mesh position={[2, 0, 0]} ref={testRef} visible={false}>
         <planeGeometry args={[1, 1]} />
-        <meshBasicMaterial transparent />
+        <meshBasicMaterial />
       </mesh>
     </>
   )

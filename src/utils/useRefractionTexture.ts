@@ -15,17 +15,15 @@ function useRefractionTexture(ignoreList: Object3D[] = [], callback?: (rt: WebGL
   const screenRT = useFBO(innerWidth, innerHeight, {
     generateMipmaps: false,
   })
-  // const fullScreenTriangle = useMemo(() => new FullScreenQuad(new ShaderMaterial()), [])
 
   const mipmapRT = useFBO(innerWidth, innerHeight * 2, {
     generateMipmaps: false,
     minFilter: LinearFilter,
     magFilter: LinearFilter,
+    wrapS: RepeatWrapping,
+    wrapT: RepeatWrapping,
   })
 
-  mipmapRT.texture.minFilter = mipmapRT.texture.magFilter = LinearFilter
-
-  // mipmapRT.texture.wrapS = mipmapRT.texture.wrapT = RepeatWrapping
 
   const combineMaterial = useMemo(() => new ShaderMaterial({
     vertexShader: commonVertex,

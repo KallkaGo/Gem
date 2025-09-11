@@ -5,7 +5,7 @@ import mipmapBlurFragment from '@/three/components/Sketch/shader/mipmapBlur/frag
 import { useFBO } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { useCallback, useMemo } from 'react'
-import { Color, LinearFilter, RepeatWrapping, ShaderMaterial, Uniform, Vector2, WebGLRenderTarget } from 'three'
+import { Color, HalfFloatType, LinearFilter, RepeatWrapping, ShaderMaterial, Uniform, UnsignedByteType, Vector2, WebGLRenderTarget } from 'three'
 
 import { FullScreenQuad } from 'three-stdlib'
 
@@ -14,6 +14,7 @@ const KERNEL_RADIUS = [3, 5, 7, 9, 11, 13]
 function useRefractionTexture(ignoreList: Object3D[] = [], callback?: (rt: WebGLRenderTarget) => void) {
   const screenRT = useFBO(innerWidth, innerHeight, {
     generateMipmaps: false,
+    type: UnsignedByteType,
   })
 
   const mipmapRT = useFBO(innerWidth, innerHeight * 2, {
@@ -23,7 +24,6 @@ function useRefractionTexture(ignoreList: Object3D[] = [], callback?: (rt: WebGL
     wrapS: RepeatWrapping,
     wrapT: RepeatWrapping,
   })
-
 
   const combineMaterial = useMemo(() => new ShaderMaterial({
     vertexShader: commonVertex,
@@ -52,6 +52,7 @@ function useRefractionTexture(ignoreList: Object3D[] = [], callback?: (rt: WebGL
       const height = innerHeight / 2
       const rt = new WebGLRenderTarget(width, height, {
         generateMipmaps: false,
+        type: HalfFloatType,
       })
 
       rt.texture.minFilter = rt.texture.magFilter = LinearFilter
@@ -59,6 +60,7 @@ function useRefractionTexture(ignoreList: Object3D[] = [], callback?: (rt: WebGL
 
       const tmpRt = new WebGLRenderTarget(width, height, {
         generateMipmaps: false,
+        type: HalfFloatType,
       })
 
       tmpRt.texture.minFilter = tmpRt.texture.magFilter = LinearFilter

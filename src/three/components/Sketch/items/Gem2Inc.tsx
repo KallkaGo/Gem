@@ -1,11 +1,11 @@
-import type { MeshBasicMaterial } from 'three'
 import { useEnvironment, useGLTF, useTexture } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
 import { computeOffsets } from '@utils/tools'
 import useRefractionTexture from '@utils/useRefractionTexture'
 import { useControls } from 'leva'
 import { useEffect, useMemo, useRef } from 'react'
-import { Color, CubeCamera, DoubleSide, Euler, HalfFloatType, LinearMipmapLinearFilter, Matrix4, Mesh, NearestFilter, Quaternion, RepeatWrapping, Scene, ShaderMaterial, Uniform, Vector2, Vector3, Vector4, WebGLCubeRenderTarget } from 'three'
+import { Color, CubeCamera, DoubleSide, Euler, HalfFloatType, LinearMipmapLinearFilter, Matrix4, Mesh, NearestFilter, Quaternion, RepeatWrapping, Scene, ShaderMaterial, SRGBColorSpace, Texture, Uniform, Vector2, Vector3, Vector4, WebGLCubeRenderTarget } from 'three'
+
 import RES from '../../RES'
 import captureFragmentShader from '../shader/captureNormal/fragment.glsl'
 import captureVertexShader from '../shader/captureNormal/vertex.glsl'
@@ -15,12 +15,22 @@ import diamondVertexShader from '../shader/diamondInc_opt/vertex.glsl'
 function Gem2Inc() {
   const gltf = useGLTF(RES.models.diamond3)
 
-  const [inclusionMap, inclusionNormalMap, roughnessMap] = useTexture([RES.textures.inclusionMap, RES.textures.inclusionNormalMap, RES.textures.roughnessMap])
+  const [inclusionMap, inclusionNormalMap, roughnessMap, bumpMap] = useTexture([RES.textures.inclusionMap, RES.textures.inclusionNormalMap, RES.textures.roughnessMap, RES.textures.bumpMap])
   inclusionMap.wrapS = inclusionMap.wrapT = RepeatWrapping
   inclusionMap.flipY = false
+  inclusionMap.colorSpace = SRGBColorSpace
 
   inclusionNormalMap.wrapS = inclusionNormalMap.wrapT = RepeatWrapping
   inclusionNormalMap.flipY = false
+  inclusionNormalMap.colorSpace = SRGBColorSpace
+
+  roughnessMap.wrapS = roughnessMap.wrapT = RepeatWrapping
+  roughnessMap.flipY = false
+  roughnessMap.colorSpace = SRGBColorSpace
+
+  bumpMap.wrapS = bumpMap.wrapT = RepeatWrapping
+  bumpMap.flipY = false
+  bumpMap.colorSpace = SRGBColorSpace
 
   const envMap = useEnvironment({ files: RES.textures.env_gem })
   envMap.generateMipmaps = true
@@ -80,12 +90,12 @@ function Gem2Inc() {
   }, [])
 
   const diamondUniforms = useMemo(() => ({
-    envMapIntensity: new Uniform(1.3),
+    envMapIntensity: new Uniform(1),
     gammaFactor: new Uniform(1),
     envMapRotation: new Uniform(0),
     envMapRotationQuat: new Uniform(new Quaternion()),
     reflectivity: new Uniform(0.1),
-    transmissionMode: new Uniform(1),
+    transmissionMode: new Uniform(0),
     envMap: new Uniform(envMap),
     bounces: new Uniform(5),
     centerOffset: new Uniform(new Vector3(0, 0, 0)),
@@ -95,19 +105,25 @@ function Gem2Inc() {
     transmissionSamplerMap: new Uniform(null),
     transmission: new Uniform(0),
     colorCorrection: new Uniform(new Vector3(1, 1, 1)),
-    boostFactors: new Uniform(new Vector3(1, 1, 1)),
-    absorptionFactor: new Uniform(1),
+    boostFactors: new Uniform(new Vector3(1.3, 0.16, 0.48)),
+    absorptionFactor: new Uniform(1.6),
     squashFactor: new Uniform(0.98),
-    refractiveIndex: new Uniform(2.6),
-    rIndexDelta: new Uniform(0.012),
+    refractiveIndex: new Uniform(1.77),
+    rIndexDelta: new Uniform(0),
     radius: new Uniform(1),
     geometryFactor: new Uniform(0.5),
-    color: new Uniform(new Color('#ff0000')),
+    color: new Uniform(new Color('#e14159')),
     resolution: new Uniform(new Vector2()),
     uInclusionMap: new Uniform(inclusionMap),
     uIncRouhnessMap: new Uniform(inclusionMap),
     uInclusionNormalMap: new Uniform(inclusionNormalMap),
-    uScaleParams: new Uniform(new Vector4(2.2, 0.01, 0.3, 1)),
+    uBumpMap: new Uniform(bumpMap),
+    uRoughnessMap: new Uniform(roughnessMap),
+    uScaleParams: new Uniform(new Vector4(5, 0.01, 0.3, 1)),
+    uNoiseParams: new Uniform(new Vector4(0, 1289, 3983, 34)),
+    blurRadius: new Uniform(0.26),
+    refractionSamplerMap: new Uniform(new Texture()),
+    surfaceRoughness: new Uniform(0.16),
   }), [])
 
   const diamondMaterial = useMemo(() => new ShaderMaterial({
@@ -117,7 +133,7 @@ function Gem2Inc() {
     vertexShader: diamondVertexShader,
     fragmentShader: diamondFragmentShader,
     uniforms: diamondUniforms,
-    transparent: true,
+    // transparent: true,
   }), [])
 
   useControls('Gem', {
@@ -245,6 +261,14 @@ function Gem2Inc() {
         diamondUniforms.reflectivity.value = value
       },
     },
+    surfaceRoughness: {
+      value: diamondUniforms.surfaceRoughness.value,
+      min: 0,
+      max: 1,
+      onChange: (value) => {
+        diamondUniforms.surfaceRoughness.value = value
+      },
+    },
     poissonSample: {
       value: false,
       min: 0,
@@ -278,6 +302,7 @@ function Gem2Inc() {
         diamondMaterial.uniforms.tCubeMapNormals.value = cubeRT.texture
         diamondUniforms.modelOffsetMatrix.value.fromArray(offset.offsetMatrix).premultiply(mesh.matrixWorld)
         diamondUniforms.modelOffsetMatrixInv.value.copy(diamondUniforms.modelOffsetMatrix.value).invert()
+        diamondUniforms.transmissionMode.value = 0
       }
     })
   }, [])
@@ -285,13 +310,15 @@ function Gem2Inc() {
   useFrame((state, delta) => {
     const dpr = state.gl.getPixelRatio()
     diamondUniforms.resolution.value.set(innerWidth * dpr, innerHeight * dpr)
-    // diamondUniforms.transmissionMode.value = 0
   })
 
-  useRefractionTexture([testRef.current!], (fbo) => {
-    const mat = testRef.current!.material as MeshBasicMaterial
-    mat.map = fbo.texture
-    mat.needsUpdate = true
+  useRefractionTexture([testRef.current!], () => {
+    diamondUniforms.transmissionMode.value = 1
+  }, (fbo) => {
+    // @ts-ignore
+    testRef.current!.material.map = fbo.texture
+    diamondUniforms.transmissionMode.value = 0
+    diamondUniforms.refractionSamplerMap.value = fbo.texture
   })
 
   return (

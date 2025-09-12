@@ -8,6 +8,7 @@ import env_nz from '@textures/env/nz.png'
 import env_px from '@textures/env/px.png'
 import env_py from '@textures/env/py.png'
 import env_pz from '@textures/env/pz.png'
+import bumpMap from '@textures/Inc/bumpMap.png'
 import inclusionMap from '@textures/Inc/InclusionMap.png'
 import inclusionNormalMap from '@textures/Inc/InclusionNormalMap.png'
 import roughnessMap from '@textures/Inc/roughnessMap.png'
@@ -33,5 +34,6 @@ export default {
     roughnessMap,
     inclusionMap,
     inclusionNormalMap,
+    bumpMap,
   },
 }

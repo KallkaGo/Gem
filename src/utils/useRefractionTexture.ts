@@ -5,13 +5,13 @@ import mipmapBlurFragment from '@/three/components/Sketch/shader/mipmapBlur/frag
 import { useFBO } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { useCallback, useMemo } from 'react'
-import { Color, HalfFloatType, LinearFilter, RepeatWrapping, ShaderMaterial, Uniform, UnsignedByteType, Vector2, WebGLRenderTarget } from 'three'
+import { Color, FloatType, HalfFloatType, LinearFilter, NearestFilter, RepeatWrapping, ShaderMaterial, Uniform, UnsignedByteType, Vector2, WebGLRenderTarget } from 'three'
 
 import { FullScreenQuad } from 'three-stdlib'
 
 const KERNEL_RADIUS = [3, 5, 7, 9, 11, 13]
 
-function useRefractionTexture(ignoreList: Object3D[] = [], callback?: (rt: WebGLRenderTarget) => void) {
+function useRefractionTexture(ignoreList: Object3D[] = [], beforeCallback?: () => void, afterCallback?: (rt: WebGLRenderTarget) => void) {
   const screenRT = useFBO(innerWidth, innerHeight, {
     generateMipmaps: false,
     type: UnsignedByteType,
@@ -19,10 +19,11 @@ function useRefractionTexture(ignoreList: Object3D[] = [], callback?: (rt: WebGL
 
   const mipmapRT = useFBO(innerWidth, innerHeight * 2, {
     generateMipmaps: false,
-    minFilter: LinearFilter,
-    magFilter: LinearFilter,
+    minFilter: NearestFilter,
+    magFilter: NearestFilter,
     wrapS: RepeatWrapping,
     wrapT: RepeatWrapping,
+    type: FloatType,
   })
 
   const combineMaterial = useMemo(() => new ShaderMaterial({
@@ -64,7 +65,6 @@ function useRefractionTexture(ignoreList: Object3D[] = [], callback?: (rt: WebGL
       })
 
       tmpRt.texture.minFilter = tmpRt.texture.magFilter = LinearFilter
-      tmpRt.texture.wrapS = tmpRt.texture.wrapT = RepeatWrapping
 
       const material = new ShaderMaterial({
         vertexShader: commonVertex,
@@ -115,17 +115,22 @@ function useRefractionTexture(ignoreList: Object3D[] = [], callback?: (rt: WebGL
 
   useFrame((state, delta) => {
     const validObjects = ignoreList.filter((obj) => {
-      return !!obj
+      return obj === null || obj === undefined
     })
-    if (validObjects.length === 0)
+    if (validObjects.length !== 0)
       return
+
+    beforeCallback?.()
+
     const { gl, camera, scene } = state
     gl.setRenderTarget(screenRT)
     gl.getClearColor(oldClearColor)
     const oldAlpha = gl.getClearAlpha()
     const oldBackGround = scene.background
+    const autoClearState = gl.autoClear
     scene.background = null
     gl.setClearColor(clearColor, 1)
+    gl.autoClear = true
     ignoreList.forEach(mesh => (mesh.visible = false))
     gl.render(scene, camera)
     scene.background = oldBackGround
@@ -141,7 +146,8 @@ function useRefractionTexture(ignoreList: Object3D[] = [], callback?: (rt: WebGL
     combineMaterial.uniforms.uDiffuseBlur6.value = mipmapRTArray[5].texture
     gl.setRenderTarget(mipmapRT)
     combinePassFT.render(gl)
-    callback && callback(mipmapRT)
+    afterCallback && afterCallback(mipmapRT)
+    gl.autoClear = autoClearState
     gl.setRenderTarget(null)
   })
 }

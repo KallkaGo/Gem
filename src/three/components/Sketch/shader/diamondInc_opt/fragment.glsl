@@ -28,11 +28,19 @@ uniform vec4 envMapRotationQuat;
 uniform float reflectivity;
 uniform sampler2D envMap;
 uniform int bounces;
+uniform int transmissionMode;
 uniform vec2 resolution;
 uniform sampler2D uInclusionMap;
 uniform sampler2D uIncRouhnessMap;
 uniform sampler2D uInclusionNormalMap;
+uniform sampler2D uRoughnessMap;
+uniform sampler2D uBumpMap;
 uniform vec4 uScaleParams;
+uniform float surfaceRoughness;
+uniform sampler2D refractionSamplerMap;
+uniform vec4 uNoiseParams;
+uniform float blurRadius;
+uniform bool clampFlag;
 
 #define MODEL_OFFSET_MATRIX  modelOffsetMatrix
 #define INV_MODEL_OFFSET_MATRIX  modelOffsetMatrixInv
@@ -44,11 +52,56 @@ uniform vec4 uScaleParams;
 #define DIA_ORIENT_ENVMAP 0
 #define RAY_BOUNCES (bounces)
 
+vec4 RGBM16ToLinear1(in vec4 value) {
+  return vec4(value.rgb * value.a * 16., 1.);
+}
+
+float mod289(float x) {
+  return x - floor(x * (1. / uNoiseParams.y)) * uNoiseParams.y;
+}
+vec4 mod289(vec4 x) {
+  return x - floor(x * (1. / uNoiseParams.z)) * uNoiseParams.z;
+}
+
+vec4 perm(vec4 x) {
+  return mod289(((x * uNoiseParams.w) + 1.) * x);
+}
+
+float noise2(vec3 p) {
+  vec3 a = floor(p);
+  vec3 d = p - a;
+  d = d * d * (3. - 2. * d);
+  vec4 b = a.xxyy + vec4(0., 1., 0., 1.);
+  vec4 k1 = perm(b.xyxy);
+  vec4 k2 = perm(k1.xyxy + b.zzww);
+  vec4 c = k2 + a.zzzz;
+  vec4 k3 = perm(c);
+  vec4 k4 = perm(c + 1.);
+  vec4 o1 = fract(k3 * (1. / 41.));
+  vec4 o2 = fract(k4 * (1. / 41.));
+  vec4 o3 = o2 * d.z + o1 * (1. - d.z);
+  vec2 o4 = o3.yw * d.x + o3.xz * (1. - d.x);
+  return o4.y * d.y + o4.x * (1. - d.y);
+}
+
 mat3 GetTangentBasis(vec3 TangentZ) {
-    vec3 up = vec3(0., 1., 1.);
-    vec3 TangentX = normalize(cross((dot(TangentZ, up))<0.8?up:vec3(1., 0., 0.), TangentZ));
-    vec3 TangentY = cross(TangentZ, TangentX);
-    return mat3(TangentX, TangentY, TangentZ);
+  vec3 up = vec3(0., 1., 1.);
+  vec3 TangentX = normalize(cross((dot(TangentZ, up)) < 0.8 ? up : vec3(1., 0., 0.), TangentZ));
+  vec3 TangentY = cross(TangentZ, TangentX);
+  return mat3(TangentX, TangentY, TangentZ);
+}
+
+void getNormalAndRoughness(inout vec3 normal, inout float roughness) {
+  mat3 basis = GetTangentBasis(normal);
+  // 等同于 inverse(basis) * vWorldPosition
+  vec3 transformedPos = vWorldPosition * basis;
+  vec2 uvSurface = 0.5 * uScaleParams.x * transformedPos.xy / radius;
+  roughness = surfaceRoughness * 7.;
+  roughness *= texture2D(uRoughnessMap, uvSurface).r;
+  vec3 perturbedNormal = texture2D(uBumpMap, uvSurface).rgb * 2. - 1.;
+  perturbedNormal.xy *= uScaleParams.y;
+  perturbedNormal = normalize(basis * perturbedNormal);
+  normal = perturbedNormal;
 }
 
 vec3 BRDF_Specular_GGX_Environment(const in vec3 viewDir, const in vec3 normal, const in vec3 specularColor, const in float roughness) {
@@ -218,7 +271,7 @@ vec3 getRefractionColor(vec3 origin, vec3 direction, vec3 normal) {
     mappedNormal = -normalize(mappedNormal);
     float roughnessVol = 0.;
     getInclusionColorNormal(intersectedPos, hitNormal, inclusionColor, inclusionNormal, roughnessVol);
-    mappedNormal = inclusionNormal;
+    mappedNormal = mix(mappedNormal, inclusionNormal, .5);
     float r = length(dist) / radius * absorptionFactor;
     attenuationFactor *= exp(-r * (1. - color));
 
@@ -386,6 +439,107 @@ vec3 getRefractionColorPoissonSample(vec3 origin, vec3 direction, vec3 normal) {
   return totalColor / float(sampleCount);
 }
 
+float getRoughnessModifier(vec3 origin, vec3 direction, vec3 normal) {
+  const float n1 = 1.;
+  const float epsilon = 1e-4;
+  float f0 = (2.4 - n1) / (2.4 + n1);
+  f0 *= f0;
+  vec3 newDirection = refract(direction, normal, n1 / refractiveIndex);
+  int count = 0;
+  mat4 invModelOffsetMatrix = INV_MODEL_OFFSET_MATRIX;
+  newDirection = normalize((invModelOffsetMatrix * vec4(newDirection, 0.)).xyz);
+  origin = (invModelOffsetMatrix * vec4(origin, 1.)).xyz;
+  float totalDistance = 0.;
+  for(int i = 0; i < RAY_BOUNCES; i++) {
+    vec3 hitNormal;
+    vec3 intersectedPos = intersect(origin, newDirection, hitNormal);
+    vec3 dist = intersectedPos - origin;
+    vec3 d = normalize(intersectedPos - CENTER_OFFSET);
+    totalDistance += sqrt(length(dist) / radius);
+    vec3 mappedNormal = getNormalDistance(d).rgb;
+    mappedNormal = 2. * mappedNormal - 1.;
+    mappedNormal = -normalize(mappedNormal);
+    origin = intersectedPos;
+    vec3 origin2 = (MODEL_OFFSET_MATRIX * vec4(intersectedPos, 1)).xyz;
+    vec3 oldDir = newDirection;
+    newDirection = refract(newDirection, mappedNormal, refractiveIndex / n1);
+    if(dot(newDirection, newDirection) < epsilon) {
+      newDirection = reflect(oldDir, mappedNormal);
+    } else {
+      newDirection = reflect(oldDir, mappedNormal);
+      count++;
+    }
+
+  }
+  return pow(noise2(vec3(origin.xy, totalDistance)), 2.);
+  return 1.;
+}
+
+vec4 Sample(in sampler2D mipMapTexture, vec2 uv) {
+  vec4 color = textureLod(mipMapTexture, uv, 5.);
+  // return RGBM16ToLinear1(color);
+  return color;
+}
+
+vec4 SamplePossion(in sampler2D mipMapTexture, vec2 uv) {
+  vec4 totalColor = vec4(0.0);
+  const int sampleCount = 4;
+
+  for(int i = 0; i < sampleCount; i++) {
+    vec2 offset = poissonDisk[i] * (1. / resolution) * 5.;
+
+    vec2 jitteredUV = uv + vec2(offset.x, offset.y);
+
+    vec4 sampleColor = texture2D(mipMapTexture, jitteredUV);
+    totalColor += sampleColor;
+  }
+  return totalColor / float(sampleCount);
+  // vec4 color = texture2D(mipMapTexture, uv);
+  // return color;
+
+}
+
+
+vec4 SampleMipMap(in sampler2D mipMapTexture, in vec2 uvCoord, in vec2 textureSize, float roughness) {
+  float maxMipLevel = 6.;
+  float mipLevel = maxMipLevel * min(1., roughness);
+  float lowerMipLevel = floor(mipLevel);
+  float t = mipLevel - lowerMipLevel;
+  float higherMipLevel = min(lowerMipLevel + 1., maxMipLevel);
+  float powLevel = pow(2., higherMipLevel);
+  vec2 texelSize = 2. * powLevel / textureSize;
+  vec2 uv = max(min(uvCoord, 1. - texelSize), texelSize);
+  vec2 uvLower = vec2(2. * uv.x, powLevel - 2. + uv.y) / powLevel;
+  powLevel *= 2.;
+  vec2 uvHigher = vec2(2. * uv.x, powLevel - 2. + uv.y) / powLevel;
+  vec4 outColor = vec4(0);
+  #ifdef POISSONSAMPLE
+  outColor = mix(SamplePossion(mipMapTexture, uvLower), SamplePossion(mipMapTexture, uvHigher), t);
+  #else
+  outColor = mix(Sample(mipMapTexture, uvLower), Sample(mipMapTexture, uvHigher), t);
+  #endif
+  vec4 outColor1 = (texture2D(mipMapTexture, uvCoord));
+  return (outColor);
+}
+
+vec4 sampleRefractionColor(in vec3 position, float roughness) {
+  vec4 ndcPos = projectionMatrix * viewMatrix * vec4(position, 1.);
+  vec2 refractionCoords = ndcPos.xy / ndcPos.w;
+  refractionCoords += 1.;
+  refractionCoords /= 2.;
+  float radiusModifier = clamp(3. / (1. + pow(vViewPosition.z, 0.5)), 0., 1.);
+  vec4 color = SampleMipMap(refractionSamplerMap, refractionCoords, resolution, roughness * blurRadius * radiusModifier);
+  return color;
+
+}
+
+vec4 LinearToRGBM16_1(in vec4 value) {
+  float maxRGB = max(value.r, max(value.g, value.b));
+  float M = clamp(maxRGB / 16., 0., 1.);
+  M = ceil(M * 255.) / 255.;
+  return vec4(value.rgb / (M * 16.), M);
+}
+
 void main() {
   vec3 normalizedNormal = normalize(vWorldNormal);
   vec3 viewVector = normalize(vWorldPosition - cameraPosition);
@@ -396,25 +550,46 @@ void main() {
   f0 *= f0;
   vec3 reflectedDirection = reflect(viewVector, normalizedNormal);
   float roughness = 0.;
-  //  inclusionsTag3
+
+  if(transmissionMode == 0 || transmissionMode == 2) {
+    getNormalAndRoughness(normalizedNormal, roughness);
+    // 考虑下是否要进行二次折射 会有闪点的效果
+    // reflectedDirection = reflect(viewVector, normalizedNormal);
+  }
 
   vec3 brdfReflected = BRDF_Specular_GGX_Environment(reflectedDirection, normalizedNormal, vec3(f0), 0.);
 
-  reflectionColor = SampleSpecularReflection(reflectedDirection, roughness).rgb * brdfReflected * reflectivity * 2.;
+  if(transmissionMode == 0 || transmissionMode == 2) {
+    reflectionColor = SampleSpecularReflection(reflectedDirection, roughness).rgb * brdfReflected * reflectivity * 2.;
+  }
 
-  #ifdef POISSONSAMPLE
-  refractionColor = getRefractionColorPoissonSample(vWorldPosition, viewVector, normalizedNormal);
-  #else
-  refractionColor = getRefractionColor(vWorldPosition, viewVector, normalizedNormal);
-  #endif
+  float modRoughness = 1.;
+  if(transmissionMode == 0) {
+    // modRoughness = getRoughnessModifier(vWorldPosition, viewVector, normalizedNormal);
+    modRoughness += roughness;
+    modRoughness = max(min(modRoughness, 1.), 0.);
+    if(uNoiseParams.x < 0.01)
+      modRoughness = roughness;
+    refractionColor = sampleRefractionColor(vWorldPosition.xyz, modRoughness).rgb;
+
+  }
+
+  if(transmissionMode == 1 || transmissionMode == 2) {
+  // #ifdef POISSONSAMPLE
+  //   refractionColor = getRefractionColorPoissonSample(vWorldPosition, viewVector, normalizedNormal);
+  // #else
+  //   refractionColor = getRefractionColor(vWorldPosition, viewVector, normalizedNormal);
+  // #endif
+    refractionColor = getRefractionColor(vWorldPosition, viewVector, normalizedNormal);
+  }
 
   vec3 diffuseColor = vec3(1.);
 
   //  beforeAccumulation
   gl_FragColor = vec4((refractionColor.rgb + reflectionColor.rgb) * diffuseColor, 1.);
-  // gl_FragColor.rgb = refractionColor;
+  // gl_FragColor.rgb = vec3(normalizedNormal);
   // gl_FragColor = test;
   gl_FragColor.rgb = pow(gl_FragColor.rgb, vec3(gammaFactor));
   gl_FragColor.rgb = max(gl_FragColor.rgb, 0.);
-  gl_FragColor = linearToOutputTexel(gl_FragColor);
+  // gl_FragColor.rgb = pow(gl_FragColor.rgb, vec3(1. / 2.2));
 }

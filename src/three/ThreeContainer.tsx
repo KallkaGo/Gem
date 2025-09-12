@@ -3,7 +3,7 @@ import { useInteractStore } from '@utils/Store'
 import { Leva } from 'leva'
 import { Perf } from 'r3f-perf'
 import { Suspense } from 'react'
-import {  NoToneMapping } from 'three'
+import {  ACESFilmicToneMapping, NoToneMapping } from 'three'
 import Sketch from './components/Sketch/Sketch'
 
 export default function ThreeContainer() {

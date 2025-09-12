@@ -3,15 +3,9 @@ uniform vec2 texSize;
 uniform vec2 direction;
 uniform bool clampFlag;
 uniform sampler2D uDiffuse;
-vec4 RGBM16ToLinear1(in vec4 value) {
-  return vec4(value.rgb * value.a * 16., 1.);
-}
-vec4 LinearToRGBM16_1(in vec4 value) {
-  float maxRGB = max(value.r, max(value.g, value.b));
-  float M = clamp(maxRGB / 16., 0., 1.);
-  M = ceil(M * 255.) / 255.;
-  return vec4(value.rgb / (M * 16.), M);
-}
+
+#include '../common/tools.glsl'
+
 int getDiamondBit(in int number) {
 #ifdef WebGL2Context
   return (number / 32) % 2;
@@ -23,8 +17,8 @@ float gaussianPdf(in float x, in float sigma) {
   return 0.39894 * exp(-0.5 * x * x / (sigma * sigma)) / sigma;
 }
 vec4 Sample(sampler2D sampler, vec2 uv) {
-  vec4 color = texture2D(sampler, uv);
-  // vec4 color = RGBM16ToLinear1(texture2D(sampler, uv));
+  // vec4 color = texture2D(sampler, uv);
+  vec4 color = RGBM16ToLinear1(texture2D(sampler, uv));
   float clampVal = mix(1e5, 1., clampFlag);
   color = clamp(color, vec4(0.), vec4(clampVal));
   return color;
@@ -57,6 +51,6 @@ void main() {
       weightSum += 2. * w;
     }
     gl_FragColor = diffuseSum / weightSum;
-    // gl_FragColor = LinearToRGBM16_1(gl_FragColor);
+    gl_FragColor = LinearToRGBM16_1(gl_FragColor);
   }
 }

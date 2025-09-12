@@ -95,7 +95,7 @@ function Gem2Inc() {
     envMapRotation: new Uniform(0),
     envMapRotationQuat: new Uniform(new Quaternion()),
     reflectivity: new Uniform(0.1),
-    transmissionMode: new Uniform(0),
+    transmissionMode: new Uniform(2),
     envMap: new Uniform(envMap),
     bounces: new Uniform(5),
     centerOffset: new Uniform(new Vector3(0, 0, 0)),
@@ -124,6 +124,7 @@ function Gem2Inc() {
     blurRadius: new Uniform(0.26),
     refractionSamplerMap: new Uniform(new Texture()),
     surfaceRoughness: new Uniform(0.16),
+    RGBMEncoding: new Uniform(true),
   }), [])
 
   const diamondMaterial = useMemo(() => new ShaderMaterial({
@@ -285,6 +286,8 @@ function Gem2Inc() {
     },
   })
 
+  const refracionMgr = useRefractionTexture()
+
   useEffect(() => {
     const mesh = gltf.scene.children[0] as Mesh
     captureMaterial.uniforms.radius.value = offset.radius
@@ -310,27 +313,18 @@ function Gem2Inc() {
   useFrame((state, delta) => {
     const dpr = state.gl.getPixelRatio()
     diamondUniforms.resolution.value.set(innerWidth * dpr, innerHeight * dpr)
-  })
-
-  useRefractionTexture([testRef.current!], () => {
     diamondUniforms.transmissionMode.value = 1
-  }, (fbo) => {
-    // @ts-ignore
-    testRef.current!.material.map = fbo.texture
+    diamondUniforms.RGBMEncoding.value = true
+    refracionMgr.render([])
     diamondUniforms.transmissionMode.value = 0
-    diamondUniforms.refractionSamplerMap.value = fbo.texture
+    diamondUniforms.RGBMEncoding.value = false
+    diamondUniforms.refractionSamplerMap.value = refracionMgr.mipmapRT.texture
   })
 
   return (
-    <>
-      <primitive
-        object={gltf.scene}
-      />
-      <mesh position={[2, 0, 0]} ref={testRef} visible={false}>
-        <planeGeometry args={[1, 1]} />
-        <meshBasicMaterial />
-      </mesh>
-    </>
+    <primitive
+      object={gltf.scene}
+    />
   )
 }
 

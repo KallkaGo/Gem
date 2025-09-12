@@ -3,15 +3,22 @@ import combineFragment from '@/three/components/Sketch/shader/combine/fragment.g
 import commonVertex from '@/three/components/Sketch/shader/common/vertex.glsl'
 import mipmapBlurFragment from '@/three/components/Sketch/shader/mipmapBlur/fragment.glsl'
 import { useFBO } from '@react-three/drei'
-import { useFrame } from '@react-three/fiber'
+import { useThree } from '@react-three/fiber'
 import { useCallback, useMemo } from 'react'
-import { Color, FloatType, HalfFloatType, LinearFilter, NearestFilter, RepeatWrapping, ShaderMaterial, Uniform, UnsignedByteType, Vector2, WebGLRenderTarget } from 'three'
 
+import { Color, FloatType, HalfFloatType, LinearFilter, NearestFilter, RepeatWrapping, ShaderMaterial, Uniform, UnsignedByteType, Vector2, WebGLRenderTarget } from 'three'
 import { FullScreenQuad } from 'three-stdlib'
+import { useShallow } from 'zustand/react/shallow'
 
 const KERNEL_RADIUS = [3, 5, 7, 9, 11, 13]
 
-function useRefractionTexture(ignoreList: Object3D[] = [], beforeCallback?: () => void, afterCallback?: (rt: WebGLRenderTarget) => void) {
+function useRefractionTexture() {
+  const { gl, scene, camera } = useThree(useShallow(state => ({
+    gl: state.gl,
+    scene: state.scene,
+    camera: state.camera,
+  })))
+
   const screenRT = useFBO(innerWidth, innerHeight, {
     generateMipmaps: false,
     type: UnsignedByteType,
@@ -109,20 +116,15 @@ function useRefractionTexture(ignoreList: Object3D[] = [], beforeCallback?: () =
       material.uniforms.direction.value.set(0, 1)
       render.setRenderTarget(rt)
       quad.render(render)
-      material.uniforms.uDiffuse.value = rt.texture
     }
   }, [])
 
-  useFrame((state, delta) => {
+  const render = useCallback((ignoreList: Object3D[] = []) => {
     const validObjects = ignoreList.filter((obj) => {
       return obj === null || obj === undefined
     })
     if (validObjects.length !== 0)
       return
-
-    beforeCallback?.()
-
-    const { gl, camera, scene } = state
     gl.setRenderTarget(screenRT)
     gl.getClearColor(oldClearColor)
     const oldAlpha = gl.getClearAlpha()
@@ -146,10 +148,11 @@ function useRefractionTexture(ignoreList: Object3D[] = [], beforeCallback?: () =
     combineMaterial.uniforms.uDiffuseBlur6.value = mipmapRTArray[5].texture
     gl.setRenderTarget(mipmapRT)
     combinePassFT.render(gl)
-    afterCallback && afterCallback(mipmapRT)
     gl.autoClear = autoClearState
     gl.setRenderTarget(null)
-  })
+  }, [])
+
+  return { render, mipmapRT }
 }
 
 export default useRefractionTexture

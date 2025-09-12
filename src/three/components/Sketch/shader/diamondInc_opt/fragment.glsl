@@ -40,7 +40,7 @@ uniform float surfaceRoughness;
 uniform sampler2D refractionSamplerMap;
 uniform vec4 uNoiseParams;
 uniform float blurRadius;
-uniform bool clampFlag;
+uniform bool RGBMEncoding;
 
 #define MODEL_OFFSET_MATRIX  modelOffsetMatrix
 #define INV_MODEL_OFFSET_MATRIX  modelOffsetMatrixInv
@@ -52,9 +52,7 @@ uniform bool clampFlag;
 #define DIA_ORIENT_ENVMAP 0
 #define RAY_BOUNCES (bounces)
 
-vec4 RGBM16ToLinear1(in vec4 value) {
-  return vec4(value.rgb * value.a * 16., 1.);
-}
+#include '../common/tools.glsl'
 
 float mod289(float x) {
   return x - floor(x * (1. / uNoiseParams.y)) * uNoiseParams.y;
@@ -477,8 +475,7 @@ float getRoughnessModifier(vec3 origin, vec3 direction, vec3 normal) {
 
 vec4 Sample(in sampler2D mipMapTexture, vec2 uv) {
   vec4 color = textureLod(mipMapTexture, uv, 5.);
-  // return RGBM16ToLinear1(color);
-  return color;
+  return mix(color, RGBM16ToLinear1(color), RGBMEncoding ? 0. : 1.);
 }
 
 vec4 SamplePossion(in sampler2D mipMapTexture, vec2 uv) {
@@ -491,6 +488,7 @@ vec4 SamplePossion(in sampler2D mipMapTexture, vec2 uv) {
     vec2 jitteredUV = uv + vec2(offset.x, offset.y);
 
     vec4 sampleColor = texture2D(mipMapTexture, jitteredUV);
+    sampleColor = mix(sampleColor, RGBM16ToLinear1(sampleColor), RGBMEncoding ? 0. :1.);
     totalColor += sampleColor;
   }
   return totalColor / float(sampleCount);
@@ -498,7 +496,6 @@ vec4 SamplePossion(in sampler2D mipMapTexture, vec2 uv) {
   // return color;
 
 }
-
 
 vec4 SampleMipMap(in sampler2D mipMapTexture, in vec2 uvCoord, in vec2 textureSize, float roughness) {
   float maxMipLevel = 6.;
@@ -531,13 +528,6 @@ vec4 sampleRefractionColor(in vec3 position, float roughness) {
   vec4 color = SampleMipMap(refractionSamplerMap, refractionCoords, resolution, roughness * blurRadius * radiusModifier);
   return color;
 
-}
-
-vec4 LinearToRGBM16_1(in vec4 value) {
-  float maxRGB = max(value.r, max(value.g, value.b));
-  float M = clamp(maxRGB / 16., 0., 1.);
-  M = ceil(M * 255.) / 255.;
-  return vec4(value.rgb / (M * 16.), M);
 }
 
 void main() {
@@ -591,5 +581,6 @@ void main() {
   // gl_FragColor = test;
   gl_FragColor.rgb = pow(gl_FragColor.rgb, vec3(gammaFactor));
   gl_FragColor.rgb = max(gl_FragColor.rgb, 0.);
-  // gl_FragColor.rgb = pow(gl_FragColor.rgb, vec3(1. / 2.2));
+  gl_FragColor = mix(gl_FragColor, LinearToRGBM16_1(gl_FragColor), RGBMEncoding ? 1. : 0.);
+
 }

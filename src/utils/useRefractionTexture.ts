@@ -152,7 +152,17 @@ function useRefractionTexture() {
     gl.setRenderTarget(null)
   }, [])
 
-  return { render, mipmapRT }
+  const diapose = useCallback(() => {
+    for (let i = 0; i < KERNEL_RADIUS.length; i++) {
+      mipmapRTArray[i].dispose()
+      tmpRTs[i].dispose()
+      fullScreenTriangles[i].dispose()
+      separableBlurMaterials[i].dispose()
+    }
+    combinePassFT.dispose()
+  }, [])
+
+  return { render, mipmapRT, diapose }
 }
 
 export default useRefractionTexture

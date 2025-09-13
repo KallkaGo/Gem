@@ -1,3 +1,4 @@
+import type { MeshStandardMaterial } from 'three'
 import { useEnvironment, useGLTF } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
 import { computeOffsets } from '@utils/tools'
@@ -34,8 +35,6 @@ function Gem2() {
   }), [])
 
   const cubeCamera = useMemo(() => new CubeCamera(0.1, 1000, cubeRT), [])
-
-  const scene = useThree(state => state.scene)
 
   const captureScene = useMemo(() => {
     return new Scene()
@@ -236,7 +235,7 @@ function Gem2() {
         }
         diamondMaterial.needsUpdate = true
       },
-    }
+    },
   })
 
   useEffect(() => {
@@ -258,6 +257,13 @@ function Gem2() {
         diamondUniforms.modelOffsetMatrixInv.value.copy(diamondUniforms.modelOffsetMatrix.value).invert()
       }
     })
+
+    return () => {
+      cubeRT.dispose()
+      captureMesh.geometry.dispose();
+      (captureMesh.material as MeshStandardMaterial).dispose()
+      diamondMaterial.dispose()
+    }
   }, [])
 
   useFrame((state, delta) => {

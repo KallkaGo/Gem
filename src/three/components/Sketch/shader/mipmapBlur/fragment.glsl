@@ -17,8 +17,8 @@ float gaussianPdf(in float x, in float sigma) {
   return 0.39894 * exp(-0.5 * x * x / (sigma * sigma)) / sigma;
 }
 vec4 Sample(sampler2D sampler, vec2 uv) {
-  // vec4 color = texture2D(sampler, uv);
-  vec4 color = RGBM16ToLinear1(texture2D(sampler, uv));
+  vec4 color = texture2D(sampler, uv);
+  // vec4 color = RGBM16ToLinear1(texture2D(sampler, uv));
   float clampVal = mix(1e5, 1., clampFlag);
   color = clamp(color, vec4(0.), vec4(clampVal));
   return color;
@@ -51,6 +51,6 @@ void main() {
       weightSum += 2. * w;
     }
     gl_FragColor = diffuseSum / weightSum;
-    gl_FragColor = LinearToRGBM16_1(gl_FragColor);
+    // gl_FragColor = LinearToRGBM16_1(gl_FragColor);
   }
 }

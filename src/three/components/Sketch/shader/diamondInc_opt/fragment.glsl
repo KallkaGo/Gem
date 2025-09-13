@@ -475,7 +475,8 @@ float getRoughnessModifier(vec3 origin, vec3 direction, vec3 normal) {
 
 vec4 Sample(in sampler2D mipMapTexture, vec2 uv) {
   vec4 color = textureLod(mipMapTexture, uv, 5.);
-  return mix(color, RGBM16ToLinear1(color), RGBMEncoding ? 0. : 1.);
+  return color;
+  // return mix(color, RGBM16ToLinear1(color), RGBMEncoding ? 0. : 1.);
 }
 
 vec4 SamplePossion(in sampler2D mipMapTexture, vec2 uv) {
@@ -488,7 +489,7 @@ vec4 SamplePossion(in sampler2D mipMapTexture, vec2 uv) {
     vec2 jitteredUV = uv + vec2(offset.x, offset.y);
 
     vec4 sampleColor = texture2D(mipMapTexture, jitteredUV);
-    sampleColor = mix(sampleColor, RGBM16ToLinear1(sampleColor), RGBMEncoding ? 0. :1.);
+    // sampleColor = mix(sampleColor, RGBM16ToLinear1(sampleColor), RGBMEncoding ? 0. :1.);
     totalColor += sampleColor;
   }
   return totalColor / float(sampleCount);
@@ -581,6 +582,6 @@ void main() {
   // gl_FragColor = test;
   gl_FragColor.rgb = pow(gl_FragColor.rgb, vec3(gammaFactor));
   gl_FragColor.rgb = max(gl_FragColor.rgb, 0.);
-  gl_FragColor = mix(gl_FragColor, LinearToRGBM16_1(gl_FragColor), RGBMEncoding ? 1. : 0.);
+  // gl_FragColor = mix(gl_FragColor, LinearToRGBM16_1(gl_FragColor), RGBMEncoding ? 1. : 0.);
 
 }

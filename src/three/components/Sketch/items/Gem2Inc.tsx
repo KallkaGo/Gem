@@ -45,8 +45,6 @@ function Gem2Inc() {
 
   const gl = useThree(state => state.gl)
 
-  const testRef = useRef<Mesh>(null)
-
   const cubeRT = useMemo(() => new WebGLCubeRenderTarget(1024, {
     generateMipmaps: false,
     minFilter: NearestFilter,
@@ -137,7 +135,7 @@ function Gem2Inc() {
     // transparent: true,
   }), [])
 
-  useControls('Gem', {
+  useControls('GemInc', {
     color: {
       value: `#${diamondUniforms.color.value.getHexString()}`,
       onChange: (value) => {
@@ -308,6 +306,13 @@ function Gem2Inc() {
         diamondUniforms.transmissionMode.value = 0
       }
     })
+    return () => {
+      refracionMgr.diapose()
+      diamondMaterial.dispose()
+      captureMesh.geometry.dispose();
+      (captureMesh.material as ShaderMaterial).dispose()
+      cubeRT.dispose()
+    }
   }, [])
 
   useFrame((state, delta) => {

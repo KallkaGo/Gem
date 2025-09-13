@@ -6,6 +6,7 @@ import { BloomEffect, EdgeDetectionMode, EffectComposer, EffectPass, RenderPass,
 import { useEffect, useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import RES from '../RES'
+import Gem2 from './items/Gem2'
 import Gem2Inc from './items/Gem2Inc'
 
 function Sketch() {
@@ -21,15 +22,33 @@ function Sketch() {
 
   const [isEnabled, setIsEnabled] = useState(true)
 
+  const [gemType, setGemType] = useState('gem')
+
   const composer = useMemo(() => new EffectComposer(gl), [])
 
   useControls('PostProcessing', { enabled: { value: isEnabled, onChange: setIsEnabled } })
 
+  useControls('GemType', { type: {
+    value: gemType,
+    options: ['gem', 'gemInc'],
+    onChange: setGemType,
+  } })
+
   useEffect(() => {
     scene.background = envTex
     scene.environment = envTex
+    useLoadedStore.setState({ ready: true })
+  }, [])
+
+  useEffect(() => {
     /* post processing init */
-    const bloomEffect = new BloomEffect({ intensity: 2, luminanceThreshold: 0.5, luminanceSmoothing: 0.5, mipmapBlur: true, radius: 0.1 })
+    const bloomEffect = new BloomEffect({ 
+      intensity:2, 
+      luminanceThreshold: 0.3, 
+      luminanceSmoothing: 0.5, 
+      mipmapBlur: true, 
+      radius: 0.5 
+    })
     const vignetteEffect = new VignetteEffect()
     const smaaEffect = new SMAAEffect({
       preset: SMAAPreset.ULTRA,
@@ -44,7 +63,10 @@ function Sketch() {
       ,
       new ToneMappingEffect({ mode: ToneMappingMode.ACES_FILMIC }),
     ))
-    useLoadedStore.setState({ ready: true })
+
+    return () => {
+      composer.dispose()
+    }
   }, [])
 
   useFrame((state, delta) => {
@@ -60,7 +82,9 @@ function Sketch() {
     <>
       <OrbitControls domElement={controlDom} />
       <color attach="background" args={['black']} />
-      <Gem2Inc />
+      {
+        gemType === 'gem' ? <Gem2 /> : <Gem2Inc />
+      }
     </>
   )
 }

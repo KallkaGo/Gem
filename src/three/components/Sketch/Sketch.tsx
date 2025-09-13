@@ -24,7 +24,7 @@ function Sketch() {
 
   const [gemType, setGemType] = useState('gem')
 
-  const composer = useMemo(() => new EffectComposer(gl), [])
+  const composer = useMemo(() => new EffectComposer(gl), [gemType])
 
   useControls('PostProcessing', { enabled: { value: isEnabled, onChange: setIsEnabled } })
 
@@ -42,12 +42,12 @@ function Sketch() {
 
   useEffect(() => {
     /* post processing init */
-    const bloomEffect = new BloomEffect({ 
-      intensity:2, 
-      luminanceThreshold: 0.3, 
-      luminanceSmoothing: 0.5, 
-      mipmapBlur: true, 
-      radius: 0.5 
+    const bloomEffect = new BloomEffect({
+      intensity: 2,
+      luminanceThreshold: 0.3,
+      luminanceSmoothing: 0.5,
+      mipmapBlur: true,
+      radius: 0.5,
     })
     const vignetteEffect = new VignetteEffect()
     const smaaEffect = new SMAAEffect({
@@ -67,7 +67,7 @@ function Sketch() {
     return () => {
       composer.dispose()
     }
-  }, [])
+  }, [gemType])
 
   useFrame((state, delta) => {
     if (isEnabled) {

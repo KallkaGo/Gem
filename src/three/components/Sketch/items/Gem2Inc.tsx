@@ -1,18 +1,36 @@
-import type { MeshStandardMaterial } from 'three'
-import { useEnvironment, useGLTF } from '@react-three/drei'
+import { useEnvironment, useGLTF, useTexture } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
 import { computeOffsets } from '@utils/tools'
+import useRefractionTexture from '@utils/useRefractionTexture'
 import { useControls } from 'leva'
 import { useEffect, useMemo, useRef } from 'react'
-import { Color, CubeCamera, DoubleSide, Euler, HalfFloatType, LinearMipmapLinearFilter, Matrix4, Mesh, NearestFilter, Quaternion, Scene, ShaderMaterial, Uniform, Vector2, Vector3, WebGLCubeRenderTarget } from 'three'
+import { Color, CubeCamera, DoubleSide, Euler, HalfFloatType, LinearMipmapLinearFilter, Matrix4, Mesh, NearestFilter, Quaternion, RepeatWrapping, Scene, ShaderMaterial, SRGBColorSpace, Texture, Uniform, Vector2, Vector3, Vector4, WebGLCubeRenderTarget } from 'three'
+
 import RES from '../../RES'
 import captureFragmentShader from '../shader/captureNormal/fragment.glsl'
 import captureVertexShader from '../shader/captureNormal/vertex.glsl'
-import diamondFragmentShader from '../shader/diamond_opt/fragment.glsl'
-import diamondVertexShader from '../shader/diamond_opt/vertex.glsl'
+import diamondFragmentShader from '../shader/diamondInc_opt/fragment.glsl'
+import diamondVertexShader from '../shader/diamondInc_opt/vertex.glsl'
 
-function Gem2() {
+function Gem2Inc() {
   const gltf = useGLTF(RES.models.diamond3)
+
+  const [inclusionMap, inclusionNormalMap, roughnessMap, bumpMap] = useTexture([RES.textures.inclusionMap, RES.textures.inclusionNormalMap, RES.textures.roughnessMap, RES.textures.bumpMap])
+  inclusionMap.wrapS = inclusionMap.wrapT = RepeatWrapping
+  inclusionMap.flipY = false
+  inclusionMap.colorSpace = SRGBColorSpace
+
+  inclusionNormalMap.wrapS = inclusionNormalMap.wrapT = RepeatWrapping
+  inclusionNormalMap.flipY = false
+  inclusionNormalMap.colorSpace = SRGBColorSpace
+
+  roughnessMap.wrapS = roughnessMap.wrapT = RepeatWrapping
+  roughnessMap.flipY = false
+  roughnessMap.colorSpace = SRGBColorSpace
+
+  bumpMap.wrapS = bumpMap.wrapT = RepeatWrapping
+  bumpMap.flipY = false
+  bumpMap.colorSpace = SRGBColorSpace
 
   const envMap = useEnvironment({ files: RES.textures.env_gem })
   envMap.generateMipmaps = true
@@ -70,7 +88,7 @@ function Gem2() {
   }, [])
 
   const diamondUniforms = useMemo(() => ({
-    envMapIntensity: new Uniform(1.3),
+    envMapIntensity: new Uniform(1),
     gammaFactor: new Uniform(1),
     envMapRotation: new Uniform(0),
     envMapRotationQuat: new Uniform(new Quaternion()),
@@ -85,27 +103,39 @@ function Gem2() {
     transmissionSamplerMap: new Uniform(null),
     transmission: new Uniform(0),
     colorCorrection: new Uniform(new Vector3(1, 1, 1)),
-    boostFactors: new Uniform(new Vector3(1, 1, 1)),
-    absorptionFactor: new Uniform(1),
+    boostFactors: new Uniform(new Vector3(1.3, 0.16, 0.48)),
+    absorptionFactor: new Uniform(1.6),
     squashFactor: new Uniform(0.98),
-    refractiveIndex: new Uniform(2.6),
-    rIndexDelta: new Uniform(0.012),
+    refractiveIndex: new Uniform(1.77),
+    rIndexDelta: new Uniform(0),
     radius: new Uniform(1),
     geometryFactor: new Uniform(0.5),
-    color: new Uniform(new Color('#ff0000')),
+    color: new Uniform(new Color('#e14159')),
     resolution: new Uniform(new Vector2()),
+    uInclusionMap: new Uniform(inclusionMap),
+    uIncRouhnessMap: new Uniform(inclusionMap),
+    uInclusionNormalMap: new Uniform(inclusionNormalMap),
+    uBumpMap: new Uniform(bumpMap),
+    uRoughnessMap: new Uniform(roughnessMap),
+    uScaleParams: new Uniform(new Vector4(5, 0.01, 0.3, 1)),
+    uNoiseParams: new Uniform(new Vector4(0, 1289, 3983, 34)),
+    blurRadius: new Uniform(0.26),
+    refractionSamplerMap: new Uniform(new Texture()),
+    surfaceRoughness: new Uniform(0.16),
+    RGBMEncoding: new Uniform(true),
   }), [])
 
   const diamondMaterial = useMemo(() => new ShaderMaterial({
-    defines: {
-      POISSONSAMPLE: true,
-    },
+    // defines: {
+    //   POISSONSAMPLE: true,
+    // },
     vertexShader: diamondVertexShader,
     fragmentShader: diamondFragmentShader,
     uniforms: diamondUniforms,
+    // transparent: true,
   }), [])
 
-  useControls('Gem', {
+  useControls('GemInc', {
     color: {
       value: `#${diamondUniforms.color.value.getHexString()}`,
       onChange: (value) => {
@@ -133,6 +163,14 @@ function Gem2() {
       value: diamondUniforms.absorptionFactor.value,
       min: 0,
       max: 15,
+      onChange: (value) => {
+        diamondUniforms.absorptionFactor.value = value
+      },
+    },
+    absorptionFactor: {
+      value: diamondUniforms.absorptionFactor.value,
+      min: 0,
+      max: 5,
       onChange: (value) => {
         diamondUniforms.absorptionFactor.value = value
       },
@@ -222,8 +260,16 @@ function Gem2() {
         diamondUniforms.reflectivity.value = value
       },
     },
+    surfaceRoughness: {
+      value: diamondUniforms.surfaceRoughness.value,
+      min: 0,
+      max: 1,
+      onChange: (value) => {
+        diamondUniforms.surfaceRoughness.value = value
+      },
+    },
     poissonSample: {
-      value: true,
+      value: false,
       min: 0,
       max: 1,
       onChange: (value) => {
@@ -237,6 +283,8 @@ function Gem2() {
       },
     },
   })
+
+  const refracionMgr = useRefractionTexture()
 
   useEffect(() => {
     const mesh = gltf.scene.children[0] as Mesh
@@ -255,20 +303,27 @@ function Gem2() {
         diamondMaterial.uniforms.tCubeMapNormals.value = cubeRT.texture
         diamondUniforms.modelOffsetMatrix.value.fromArray(offset.offsetMatrix).premultiply(mesh.matrixWorld)
         diamondUniforms.modelOffsetMatrixInv.value.copy(diamondUniforms.modelOffsetMatrix.value).invert()
+        diamondUniforms.transmissionMode.value = 0
       }
     })
-
     return () => {
-      cubeRT.dispose()
-      captureMesh.geometry.dispose();
-      (captureMesh.material as MeshStandardMaterial).dispose()
+      refracionMgr.diapose()
       diamondMaterial.dispose()
+      captureMesh.geometry.dispose();
+      (captureMesh.material as ShaderMaterial).dispose()
+      cubeRT.dispose()
     }
   }, [])
 
   useFrame((state, delta) => {
     const dpr = state.gl.getPixelRatio()
     diamondUniforms.resolution.value.set(innerWidth * dpr, innerHeight * dpr)
+    diamondUniforms.transmissionMode.value = 1
+    diamondUniforms.RGBMEncoding.value = true
+    refracionMgr.render([])
+    diamondUniforms.transmissionMode.value = 0
+    diamondUniforms.RGBMEncoding.value = false
+    diamondUniforms.refractionSamplerMap.value = refracionMgr.mipmapRT.texture
   })
 
   return (
@@ -278,4 +333,4 @@ function Gem2() {
   )
 }
 
-export default Gem2
+export default Gem2Inc

@@ -27,10 +27,7 @@ export default defineConfig({
     port: 2333,
   },
   plugins: [
-    glsl({
-      compress: true,
-      watch: true,
-    }),
+    glsl(),
     react(),
   ],
 

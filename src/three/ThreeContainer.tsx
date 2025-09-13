@@ -3,7 +3,7 @@ import { useInteractStore } from '@utils/Store'
 import { Leva } from 'leva'
 import { Perf } from 'r3f-perf'
 import { Suspense } from 'react'
-import {  NoToneMapping } from 'three'
+import { NoToneMapping } from 'three'
 import Sketch from './components/Sketch/Sketch'
 
 export default function ThreeContainer() {
@@ -14,7 +14,7 @@ export default function ThreeContainer() {
       <Canvas
         frameloop={demand ? 'never' : 'always'}
         className="webgl"
-        dpr={[1, 2]}
+        dpr={[1, 1.5]}
         camera={{
           fov: 35,
           near: 0.1,

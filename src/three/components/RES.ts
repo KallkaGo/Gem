@@ -8,6 +8,10 @@ import env_nz from '@textures/env/nz.png'
 import env_px from '@textures/env/px.png'
 import env_py from '@textures/env/py.png'
 import env_pz from '@textures/env/pz.png'
+import bumpMap from '@textures/Inc/bumpMap.png'
+import inclusionMap from '@textures/Inc/InclusionMap.png'
+import inclusionNormalMap from '@textures/Inc/InclusionNormalMap.png'
+import roughnessMap from '@textures/Inc/roughnessMap.png'
 import env_gem from '@textures/reflect/env_gem.exr'
 import skybox_nx from '@textures/skybox/nx.png'
 import skybox_ny from '@textures/skybox/ny.png'
@@ -27,5 +31,9 @@ export default {
     cubeEnvMap: [skybox_px, skybox_nx, skybox_py, skybox_ny, skybox_pz, skybox_nz],
     envMap: [env_px, env_nx, env_py, env_ny, env_pz, env_nz],
     env_gem,
+    roughnessMap,
+    inclusionMap,
+    inclusionNormalMap,
+    bumpMap,
   },
 }

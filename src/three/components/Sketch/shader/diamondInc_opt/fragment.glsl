@@ -41,6 +41,8 @@ uniform sampler2D refractionSamplerMap;
 uniform vec4 uNoiseParams;
 uniform float blurRadius;
 uniform bool RGBMEncoding;
+uniform float uLevel;
+uniform vec2 uTextureSize;
 
 #define MODEL_OFFSET_MATRIX  modelOffsetMatrix
 #define INV_MODEL_OFFSET_MATRIX  modelOffsetMatrixInv
@@ -233,10 +235,12 @@ vec3 intersect(vec3 rayOrigin, vec3 rayDirection, inout vec3 hitNormal) {
 void getInclusionColorNormal(vec3 intersectedPos, vec3 hitNormal, inout vec3 inclusionColor, inout vec3 inclusionNormal, inout float roughnessVol) {
   mat3 basis = GetTangentBasis(hitNormal);
   vec3 transformedPos = intersectedPos * basis;
+  vec2 uv = 0.5 * uScaleParams.w * transformedPos.xy / radius;
   inclusionColor = vec3(1.);
-  inclusionColor = texture2D(uInclusionMap, 0.5 * uScaleParams.w * transformedPos.xy / radius).rgb;
-  roughnessVol = texture2D(uIncRouhnessMap, 0.5 * uScaleParams.w * transformedPos.xy / radius).r * 7.;
-  inclusionNormal = texture2D(uInclusionNormalMap, 0.5 * uScaleParams.w * transformedPos.xy / radius).rgb;
+  inclusionColor = texture2D(uInclusionMap, uv).rgb;
+  roughnessVol = texture2D(uIncRouhnessMap, uv).r * 7.;
+  inclusionNormal = texture2D(uInclusionNormalMap, uv).rgb;
+  inclusionNormal = packedTexture2DLOD(uInclusionNormalMap, transformedPos.xy, uLevel, uTextureSize,(0.5 * uScaleParams.w  / radius)).rgb;
   inclusionNormal = 2. * inclusionNormal - 1.;
   inclusionNormal.xy *= uScaleParams.z;
   inclusionNormal = normalize(basis * inclusionNormal);

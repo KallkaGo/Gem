@@ -1,11 +1,12 @@
 import { useEnvironment, useGLTF, useTexture } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
+import { PackedMipMapGenerator } from '@utils/csmMipmap/PackedMipMapGenerator'
 import { computeOffsets } from '@utils/tools'
 import useRefractionTexture from '@utils/useRefractionTexture'
 import { useControls } from 'leva'
 import { useEffect, useMemo, useRef } from 'react'
-import { Color, CubeCamera, DoubleSide, Euler, HalfFloatType, LinearMipmapLinearFilter, Matrix4, Mesh, NearestFilter, Quaternion, RepeatWrapping, Scene, ShaderMaterial, SRGBColorSpace, Texture, Uniform, Vector2, Vector3, Vector4, WebGLCubeRenderTarget } from 'three'
 
+import { Color, CubeCamera, DoubleSide, Euler, HalfFloatType, LinearFilter, LinearMipmapLinearFilter, Matrix4, Mesh, NearestFilter, Quaternion, RepeatWrapping, Scene, ShaderMaterial, SRGBColorSpace, Texture, Uniform, Vector2, Vector3, Vector4, WebGLCubeRenderTarget, WebGLRenderTarget } from 'three'
 import RES from '../../RES'
 import captureFragmentShader from '../shader/captureNormal/fragment.glsl'
 import captureVertexShader from '../shader/captureNormal/vertex.glsl'
@@ -20,9 +21,11 @@ function Gem2Inc() {
   inclusionMap.flipY = false
   inclusionMap.colorSpace = SRGBColorSpace
 
-  inclusionNormalMap.wrapS = inclusionNormalMap.wrapT = RepeatWrapping
+  // inclusionNormalMap.wrapS = inclusionNormalMap.wrapT = RepeatWrapping
   inclusionNormalMap.flipY = false
-  inclusionNormalMap.colorSpace = SRGBColorSpace
+  // inclusionNormalMap.colorSpace = SRGBColorSpace
+
+  console.log('inclusionNormalMap', inclusionNormalMap)
 
   roughnessMap.wrapS = roughnessMap.wrapT = RepeatWrapping
   roughnessMap.flipY = false
@@ -115,6 +118,8 @@ function Gem2Inc() {
     uInclusionMap: new Uniform(inclusionMap),
     uIncRouhnessMap: new Uniform(inclusionMap),
     uInclusionNormalMap: new Uniform(inclusionNormalMap),
+    uLevel: new Uniform(2),
+    uTextureSize: new Uniform(new Vector2(1, 1)),
     uBumpMap: new Uniform(bumpMap),
     uRoughnessMap: new Uniform(roughnessMap),
     uScaleParams: new Uniform(new Vector4(5, 0.01, 0.3, 1)),
@@ -284,6 +289,17 @@ function Gem2Inc() {
     },
   })
 
+  const smoothNormalRT = useMemo(() => new WebGLRenderTarget(1, 1, {
+    minFilter: LinearFilter,
+    magFilter: LinearFilter,
+    generateMipmaps: false,
+    type: HalfFloatType,
+    wrapS: RepeatWrapping,
+    wrapT: RepeatWrapping,
+  }), [])
+
+  const mipmapper = useMemo(() => new PackedMipMapGenerator(), [])
+
   const refracionMgr = useRefractionTexture()
 
   useEffect(() => {
@@ -296,14 +312,17 @@ function Gem2Inc() {
     captureScene.add(captureMesh)
     cubeCamera.update(gl, captureScene)
 
+    mipmapper.update(inclusionNormalMap, smoothNormalRT, gl)
+    diamondUniforms.uInclusionNormalMap.value = smoothNormalRT.texture
+    diamondMaterial.uniforms.tCubeMapNormals.value = cubeRT.texture
+    diamondUniforms.modelOffsetMatrix.value.fromArray(offset.offsetMatrix).premultiply(mesh.matrixWorld)
+    diamondUniforms.modelOffsetMatrixInv.value.copy(diamondUniforms.modelOffsetMatrix.value).invert()
+    diamondUniforms.transmissionMode.value = 0
+
     gltf.scene.traverse((child) => {
       if ((child as Mesh).isMesh) {
         const mesh = child as Mesh
         mesh.material = diamondMaterial
-        diamondMaterial.uniforms.tCubeMapNormals.value = cubeRT.texture
-        diamondUniforms.modelOffsetMatrix.value.fromArray(offset.offsetMatrix).premultiply(mesh.matrixWorld)
-        diamondUniforms.modelOffsetMatrixInv.value.copy(diamondUniforms.modelOffsetMatrix.value).invert()
-        diamondUniforms.transmissionMode.value = 0
       }
     })
     return () => {
@@ -312,10 +331,13 @@ function Gem2Inc() {
       captureMesh.geometry.dispose();
       (captureMesh.material as ShaderMaterial).dispose()
       cubeRT.dispose()
+      smoothNormalRT.dispose()
+      mipmapper.dispose()
     }
   }, [])
 
   useFrame((state, delta) => {
+    diamondUniforms.uTextureSize.value = new Vector2(smoothNormalRT.width, smoothNormalRT.height)
     const dpr = state.gl.getPixelRatio()
     diamondUniforms.resolution.value.set(innerWidth * dpr, innerHeight * dpr)
     diamondUniforms.transmissionMode.value = 1

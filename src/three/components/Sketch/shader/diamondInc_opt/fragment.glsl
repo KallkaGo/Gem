@@ -507,6 +507,7 @@ vec4 SampleMipMap(in sampler2D mipMapTexture, in vec2 uvCoord, in vec2 textureSi
   float powLevel = pow(2., higherMipLevel);
   vec2 texelSize = 2. * powLevel / textureSize;
   vec2 uv = max(min(uvCoord, 1. - texelSize), texelSize);
+  // Level n的起始位置 = 1 - 1/2^n
   vec2 uvLower = vec2(2. * uv.x, powLevel - 2. + uv.y) / powLevel;
   powLevel *= 2.;
   vec2 uvHigher = vec2(2. * uv.x, powLevel - 2. + uv.y) / powLevel;

@@ -11,7 +11,10 @@ import { FullScreenQuad } from 'three-stdlib'
 import { useShallow } from 'zustand/react/shallow'
 
 const KERNEL_RADIUS = [3, 5, 7, 9, 11, 13]
-
+/**
+ * 
+ * @returns 带mipmap的折射贴图
+ */
 function useRefractionTexture() {
   const { gl, scene, camera } = useThree(useShallow(state => ({
     gl: state.gl,
@@ -24,6 +27,7 @@ function useRefractionTexture() {
     type: UnsignedByteType,
   })
 
+  // 垂直堆叠的mipmap需要 w * 2h的尺寸
   const mipmapRT = useFBO(innerWidth, innerHeight * 2, {
     generateMipmaps: false,
     minFilter: NearestFilter,

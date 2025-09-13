@@ -561,6 +561,7 @@ void main() {
     float NDotL = dot(-viewVector, originNormalWS);
     NDotL = max(0., NDotL);
     NDotL = smoothstep(.1, 1., NDotL);
+    NDotL =1.;
     reflectionColor = SampleSpecularReflection(reflectedDirection, roughness).rgb * brdfReflected * reflectivity * 2. * NDotL;
   }
 

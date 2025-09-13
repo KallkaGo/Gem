@@ -1,4 +1,4 @@
-import { OrbitControls, useCubeTexture } from '@react-three/drei'
+import { Environment, OrbitControls, useCubeTexture } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useInteractStore, useLoadedStore } from '@utils/Store'
 import { useControls } from 'leva'
@@ -39,8 +39,6 @@ function Sketch() {
   } })
 
   useEffect(() => {
-    scene.background = envTex
-    scene.environment = envTex
     useLoadedStore.setState({ ready: true })
   }, [])
 
@@ -91,6 +89,7 @@ function Sketch() {
       {
         gemType === 'gem' ? <Gem2 /> : <Gem2Inc />
       }
+      <Environment map={envTex} background />
     </>
   )
 }

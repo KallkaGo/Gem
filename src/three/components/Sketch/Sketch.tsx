@@ -3,7 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useInteractStore, useLoadedStore } from '@utils/Store'
 import { useControls } from 'leva'
 import { BloomEffect, EdgeDetectionMode, EffectComposer, EffectPass, RenderPass, SMAAEffect, SMAAPreset, ToneMappingEffect, ToneMappingMode, VignetteEffect } from 'postprocessing'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import RES from '../RES'
 import Gem2 from './items/Gem2'
@@ -20,13 +20,17 @@ function Sketch() {
     gl: state.gl,
   })))
 
-  const [isEnabled, setIsEnabled] = useState(true)
+  const baseParams = useRef({
+    enablePostProcessing: true,
+  })
 
   const [gemType, setGemType] = useState('gem')
 
-  const composer = useMemo(() => new EffectComposer(gl), [gemType])
+  const composer = useMemo(() => new EffectComposer(gl), [])
 
-  useControls('PostProcessing', { enabled: { value: isEnabled, onChange: setIsEnabled } })
+  useControls('PostProcessing', { enabled: { value: baseParams.current.enablePostProcessing, onChange: (value) => {
+    baseParams.current.enablePostProcessing = value
+  } } })
 
   useControls('GemType', { type: {
     value: gemType,
@@ -54,23 +58,25 @@ function Sketch() {
       preset: SMAAPreset.ULTRA,
       edgeDetectionMode: EdgeDetectionMode.DEPTH,
     })
+    smaaEffect.edgeDetectionMaterial.edgeDetectionThreshold = 0.1
+
     composer.addPass(new RenderPass(scene, camera))
     composer.addPass(new EffectPass(
       camera,
       bloomEffect,
       vignetteEffect,
-      smaaEffect
-      ,
+      smaaEffect,
       new ToneMappingEffect({ mode: ToneMappingMode.ACES_FILMIC }),
     ))
 
     return () => {
       composer.dispose()
     }
-  }, [gemType])
+  }, [])
 
   useFrame((state, delta) => {
-    if (isEnabled) {
+    const { enablePostProcessing } = baseParams.current
+    if (enablePostProcessing) {
       composer.render()
     }
     else {

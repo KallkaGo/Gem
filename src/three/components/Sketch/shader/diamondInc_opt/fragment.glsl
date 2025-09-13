@@ -534,6 +534,7 @@ vec4 sampleRefractionColor(in vec3 position, float roughness) {
 
 void main() {
   vec3 normalizedNormal = normalize(vWorldNormal);
+  vec3 originNormalWS = normalizedNormal;
   vec3 viewVector = normalize(vWorldPosition - cameraPosition);
   vec3 reflectionColor = vec3(0.);
   vec3 refractionColor = vec3(0.);
@@ -545,14 +546,18 @@ void main() {
 
   if(transmissionMode == 0 || transmissionMode == 2) {
     getNormalAndRoughness(normalizedNormal, roughness);
-    // 考虑下是否要进行二次折射 会有闪点的效果
+    // 考虑下是否需要使用新的法线计算反射向量 会有闪点的效果
     // reflectedDirection = reflect(viewVector, normalizedNormal);
   }
 
   vec3 brdfReflected = BRDF_Specular_GGX_Environment(reflectedDirection, normalizedNormal, vec3(f0), 0.);
 
   if(transmissionMode == 0 || transmissionMode == 2) {
-    reflectionColor = SampleSpecularReflection(reflectedDirection, roughness).rgb * brdfReflected * reflectivity * 2.;
+    // 减轻边缘的高光造成的闪烁
+    float NDotL = dot(-viewVector, originNormalWS);
+    NDotL = max(0., NDotL);
+    NDotL = smoothstep(.1, 1., NDotL);
+    reflectionColor = SampleSpecularReflection(reflectedDirection, roughness).rgb * brdfReflected * reflectivity * 2. * NDotL;
   }
 
   float modRoughness = 1.;
